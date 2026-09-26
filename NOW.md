@@ -1,7 +1,7 @@
 # Current Initiative
 
 **Active Initiative:** STORE-002 — Global Design System
-**Status:** IN IMPLEMENTATION
+**Status:** READY FOR SOL REVIEW
 **Owner:** Luna
 
 **Previous:** STORE-001 — Project Architecture and Theme Skeleton  

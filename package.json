@@ -1,0 +1,11 @@
+{
+  "name": "swimshop-zimbabwe-dev-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "visual-uat": "node tools/visual-uat.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}

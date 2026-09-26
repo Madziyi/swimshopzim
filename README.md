@@ -25,7 +25,18 @@ Example from the repository root:
 .\tools\sync-theme.ps1 -AllowExisting
 ```
 
-The Local site currently renders WordPress Twenty Twenty-Five and does not have WooCommerce installed. Therefore the theme is present for activation testing, but WooCommerce behavior is not yet verified.
+The current Local activation and WooCommerce status are recorded in `LIVE-STATE.md`; keep that file authoritative when runtime state changes.
+
+## Visual UAT
+
+With the Local site running and the custom theme active, install the development dependency and run the exact-width browser harness:
+
+```powershell
+npm install
+npm run visual-uat
+```
+
+The harness uses an installed Chrome or Edge executable, checks widths from 360px through 1920px, and writes ignored screenshots to `artifacts/uat/`. Set `SSZ_BROWSER_PATH` when the browser is not in a standard installation path.
 
 ## Linting
 
@@ -43,4 +54,3 @@ Run `tools/package-theme.ps1` to create a ZIP whose only top-level directory is 
 ## Workflow
 
 Read `PROJECT.md`, `AGENT-WORKFLOW.md`, `NOW.md`, `TASKS.md` and `UAT.md` before implementation work. The bootstrap may land on `main`; subsequent implementation work uses `luna/STORE-XXX-short-description` branches and is reviewed by Sol before merge.
-
