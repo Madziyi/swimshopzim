@@ -65,3 +65,15 @@ Screenshot inspection at all eight required widths showed stable responsive layo
 
 VERIFICATION
 All PHP files pass Local PHP 8.2.29 lint, `theme.json` parses, `git diff --check` is clean, and the packaged theme ZIP contains only the `swimshop-zimbabwe/` theme root. The repository remains on the STORE-002 branch and is ready for Sol review; it is not marked accepted or merged here.
+
+## 2026-09-26 — STORE-002 Sol acceptance
+
+VERIFICATION
+Sol reviewed the complete STORE-002 branch through commit `e081549d244b7a10a1e259b726e43a5b44b59a72`, including the token system, `theme.json`, WooCommerce-compatible styling, hero stacking correction, focus treatment, development tooling and documentation.
+
+VERIFICATION
+The milestone handoff records successful Local browser UAT at 360, 390, 430, 768, 1024, 1280, 1440 and 1920px with HTTP 200, the custom theme visible, no horizontal overflow, no console or page errors, working search/mobile navigation, correct sticky-header layering and visible keyboard focus. PHP lint, `theme.json` validation and release packaging also passed.
+
+DECISION
+STORE-002 is accepted. Pull request #1 was merged to `main` at merge commit `3e31887976a205427a0d418e2983fdd1d076a220`. STORE-003 — Header and Navigation becomes the next planned initiative.
+
