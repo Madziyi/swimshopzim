@@ -1,7 +1,7 @@
 # Milestone Board
 
 - [x] STORE-001 — Theme architecture and skeleton
-- [ ] STORE-002 — Global design system
+- [x] STORE-002 — Global design system
 - [ ] STORE-003 — Header and navigation
 - [ ] STORE-004 — Homepage
 - [ ] STORE-005 — Product cards
