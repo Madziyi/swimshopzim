@@ -16,3 +16,8 @@ Thumbs.db
 # Generated packaging output
 dist/
 
+# Local visual-UAT output and browser dependencies
+node_modules/
+artifacts/uat/
+playwright-report/
+test-results/

@@ -23,3 +23,45 @@ PHP was not on the system PATH. Linting must use Local's bundled PHP executable 
 HANDOFF
 Bootstrap is ready for Sol review after the initial commit is created and pushed. STORE-002 remains planned and was not implemented.
 
+## 2026-09-26 — STORE-002 implementation
+
+DECISION
+Formalize a compact white/black/navy palette with semantic aliases, a responsive spacing scale, a system-font typography stack, restrained radii, 150–250ms motion, a 4:5 product-media contract and a small z-index scale. Preserve STORE-001 class aliases so later milestones can adopt the new vocabulary incrementally.
+
+IMPLEMENTATION
+Aligned `theme.json`, `assets/css/main.css` and `assets/css/woocommerce.css`. Added reusable global heading, link, table, form, button, badge, helper, divider, media-frame, price and loading-ready primitives without copying WooCommerce templates or changing commerce logic.
+
+OBSERVATION
+The Local theme source is synced, but the site state remains the bootstrap state: Twenty Twenty-Five is active and WooCommerce is not installed. The precondition for custom-theme visual UAT is therefore not met.
+
+VERIFICATION
+PHP lint, browser UAT, console checks and representative interaction checks must not be claimed until SwimShop Zimbabwe is active with WooCommerce active. This milestone is ready for those checks once the Local runtime is prepared.
+
+OBSERVATION
+After the first STORE-002 sync, WordPress 7.1.2 raised a fatal in `WP_Theme_JSON` because this runtime does not accept `settings.spacing.spacingScale: false`. Removing that field while retaining the explicit spacing sizes restored the homepage.
+
+VERIFICATION
+The corrected theme was synced successfully. All PHP theme files pass Local PHP 8.2.29 lint. The browser rendered the active custom theme with WooCommerce 11.1.2 present, including the homepage, sticky header, hero, brand section and footer. Search opened and closed, accepted `swim`, and reached `/?s=swim&post_type=product`.
+
+VERIFICATION
+Visual review was performed in the available in-app browser viewport (approximately desktop width) at the homepage top, mid-page brand/product sections and footer. No visible horizontal overflow or contrast regression remained after the hero-heading fix.
+
+OBSERVATION
+The available browser binding does not expose viewport overrides for the required 360, 390, 430, 768, 1024, 1280, 1440 and 1920px widths, nor a console-log API. Those checks remain outstanding and are not claimed as complete. A direct PHP CLI WordPress bootstrap was also unavailable because the bundled CLI binary lacks the MySQL extension; the live browser runtime remained authoritative.
+
+## 2026-09-26 — STORE-002 completion verification
+
+IMPLEMENTATION
+Fixed the hero stacking context with a local isolated layer contract: media at layer 0, the image wash at layer 1 and hero content at layer 2. The global sticky header remains above the hero. Added white focus outlines for dark hero, campaign, announcement and footer surfaces.
+
+IMPLEMENTATION
+Added repeatable Playwright visual UAT tooling in `tools/visual-uat.mjs`, with `npm run visual-uat` as the entry point. The harness uses the installed Chrome executable, runs exact viewports at 360, 390, 430, 768, 1024, 1280, 1440 and 1920px, checks HTTP/theme/runtime state, overflow, sticky header coverage, search, mobile navigation where applicable, keyboard focus and full-page screenshots under ignored `artifacts/uat/`.
+
+VERIFICATION
+All eight exact-width runs passed with HTTP 200, active custom theme visible, no horizontal overflow, no console errors, no page errors, working search, working mobile menu at widths through 1024px, sticky header above content, and visible 3px solid keyboard focus outlines. Light-surface focus was navy; dark-surface focus was white.
+
+OBSERVATION
+Screenshot inspection at all eight required widths showed stable responsive layout, readable content, contained navigation, and no clipping or horizontal expansion. Placeholder media remains intentionally neutral pending later content/assets work.
+
+VERIFICATION
+All PHP files pass Local PHP 8.2.29 lint, `theme.json` parses, `git diff --check` is clean, and the packaged theme ZIP contains only the `swimshop-zimbabwe/` theme root. The repository remains on the STORE-002 branch and is ready for Sol review; it is not marked accepted or merged here.
