@@ -1,0 +1,18 @@
+# Local WordPress runtime and generated artifacts
+wp-config.php
+wp-content/uploads/
+wp-content/cache/
+*.sql
+*.sql.gz
+*.zip
+.bootstrap-extract/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Generated packaging output
+dist/
+
