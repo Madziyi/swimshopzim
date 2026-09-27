@@ -102,3 +102,14 @@ Restricted desktop interaction state to top-level mega-menu items, so mouse entr
 VERIFICATION
 `SSZ_REQUIRE_LOCAL_MENU=1 npm run visual-uat` passed at all ten required widths. Every result reported zero duplicate IDs; desktop widths with two configured mega-menu items passed hover exclusivity, Search→mega close, mega→Search close, ARIA reset and Escape checks. Mobile drawer, drilldown, accordion, focus restoration, body scroll lock, overflow, sticky-header, logo, search and runtime-error checks remained green. The fallback contract source check passed without changing the configured Local database menu.
 
+## 2026-09-26 — STORE-003 Sol acceptance
+
+VERIFICATION
+Sol reviewed the complete STORE-003 branch through commit `a2739fa168dc561e5b4d46e3e4e71f0db733c77e`, including the approved brand assets, WordPress-driven desktop mega-menu, mobile drawer/drilldown/accordion behavior, search/account/cart integration, context-specific DOM IDs, disclosure ARIA, fallback navigation, and extended Playwright checks.
+
+VERIFICATION
+The STORE-003 handoff records successful UAT at 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px with no horizontal overflow, duplicate IDs, console errors or page errors. Desktop mega-menu exclusivity, search/menu mutual exclusion, mobile focus/scroll behavior, sticky layering, logo rendering, PHP lint, JSON/JavaScript validation and theme packaging all passed.
+
+DECISION
+STORE-003 is accepted. Pull request #2 was merged to `main` at merge commit `cb0bc621571707e42391b3384e66788071237d4e`. STORE-004 — Homepage becomes the next planned initiative.
+
