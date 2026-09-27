@@ -84,6 +84,14 @@ Product cards are reusable across homepage product rails, WooCommerce shop/categ
 
 The first gallery image is the only alternate image and is revealed only for fine-pointer hover, with reduced-motion support. Apparel uses cover by default; known equipment/accessory category families use contain through the `ssz_product_card_media_fit` helper/filter while retaining the same 4:5 frame. Cover may use the hard-cropped 4:5 card derivative, but contain uses uncropped responsive media for both primary and first-gallery images. Card classes are scoped to normal WooCommerce loops; the queried main PDP product is excluded. Card badges are limited to SALE and SOLD OUT. Loop ratings and add-to-cart controls are removed through WooCommerce hooks; quick-add, wishlist, quick-view and swatches are intentionally out of scope.
 
+## STORE-006 shop/category archives
+
+Archive composition remains owned by classic WooCommerce hooks. `archive.php` is intentionally not overridden: the theme replaces only the native archive header, result/order toolbar, sidebar and filtered empty state while retaining WooCommerce loop markup, query semantics and pagination.
+
+`assets/css/archive.css` owns archive header, category rail, toolbar, active chips, filter drawer and pagination presentation. Product media and card internals remain in `product-card.css`; shared layout, tokens and form foundations remain in `main.css`/`woocommerce.css`. The drawer is a right-side modal on wider screens and a full-width mobile surface, with the established overlay/modal layers, visible focus treatment, sticky footer actions and reduced-motion-compatible behavior.
+
+The filter contract is server-rendered and URL-addressable: category, native product brand, size, colour, price and availability are represented as GET values. `archive-filters.js` only coordinates drawer state, accordions and form serialization; it does not fetch or render products. Search and navigation close events are shared so the header and archive overlays preserve one-open-surface behavior.
+
 ## Accessibility contract
 
 Visible `:focus-visible` treatment, readable base sizing, usable control heights, semantic HTML compatibility and reduced motion are preserved. The existing skip link is unchanged. Full accessibility auditing remains STORE-013 scope.

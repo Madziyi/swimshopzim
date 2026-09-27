@@ -183,3 +183,20 @@ The targeted follow-up corrected two implementation details: contain-mode produc
 DECISION
 STORE-005 is accepted. Pull request #4 was merged to `main` at merge commit `2f54e9135e146087923e4b07513d1b94ab0f0a8b`. STORE-006 — Shop/category pages becomes the next planned initiative.
 
+## 2026-09-27 — STORE-006 implementation and verification
+
+IMPLEMENTATION
+Created branch `luna/STORE-006-shop-category-pages` from accepted main SHA `85a55ea032e012d8dca23026c0b91134f11bb961` and advanced the theme version to `0.6.0`. Added a classic WooCommerce hook-first archive layer for Shop, product categories and native product brands: context-aware header/description, brand identity fallback, approved category rail, result toolbar, native sorting, filter drawer, active chips, filtered empty state and preserved WooCommerce pagination. No archive template override, FSE Product Collection, AJAX or plugin was introduced.
+
+IMPLEMENTATION
+Added server-rendered GET filtering for category, native `filter_product_brand`, native `filter_size`/`query_type_size`, native `filter_colour`/`query_type_colour`, `min_price`, `max_price` and in-stock availability. Added progressive-enhancement drawer JavaScript for comma-separated multi-select serialization, accordions, focus trap/restoration, Escape/backdrop/button close, body scroll lock and mutual exclusion with search/navigation overlays. Added archive-only CSS without changing STORE-005 card ownership; fixed the closed backdrop state so it cannot intercept the toolbar trigger.
+
+VERIFICATION
+Seeded Local-only global attributes, approved category hierarchy, size/colour terms, stock coverage, prices and distinct popularity values across the existing eight `STORE-005 TEST` products. Live browser checks verified Shop, Men, Arena and multi-filter archive URLs. The expanded Playwright visual UAT passed all ten required widths: 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px. It passed archive structure, 2/3/4 grid columns, native ordering, drawer open/close/focus/accordion behavior, no overflow, no broken images, no console/page errors and all STORE-003/004/005 regression assertions.
+
+VERIFICATION
+Functional archive UAT passed multi-group filter submit with `filter_product_brand=17`, `filter_size=m`, `query_type_size=or`, `filter_colour=black`, `query_type_colour=or`, `filter_stock_status=instock`, `min_price=20` and `max_price=130`; active chips, sorting/popularity order, category archive, brand archive and zero-result empty state all passed. A separate reversible pagination pass set `woocommerce_catalog_rows=1`, verified four cards and page 2 with four cards/current page 2, then restored the normal Local options. PHP lint, JavaScript syntax, diff checks and theme sync passed; the temporary UAT scripts and runtime fixtures remain untracked/local only.
+
+HANDOFF
+STORE-006 implementation, verification and documentation are complete. Branch is ready for Sol review; STORE-007 has not started and no merge has been performed.
+

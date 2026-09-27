@@ -16,6 +16,7 @@
 	const open = () => {
 		document.dispatchEvent(new CustomEvent('ssz:close-menu'));
 		document.dispatchEvent(new CustomEvent('ssz:close-desktop-menus'));
+		document.dispatchEvent(new CustomEvent('ssz:close-filters'));
 		panel.hidden = false;
 		openButton.setAttribute('aria-expanded', 'true');
 		input?.focus();

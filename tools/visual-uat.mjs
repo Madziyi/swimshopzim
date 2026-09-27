@@ -238,8 +238,82 @@ const inspectProductPage = async (page) => page.evaluate(() => {
   };
 });
 
+const inspectArchivePage = async (page, expectedColumns) => {
+  const archive = await page.evaluate((expected) => {
+    const root = document.documentElement;
+    const body = document.body;
+    const grid = document.querySelector('ul.products');
+    const gridStyle = grid ? getComputedStyle(grid) : null;
+    const columnCount = gridStyle?.gridTemplateColumns && gridStyle.gridTemplateColumns !== 'none'
+      ? gridStyle.gridTemplateColumns.split(' ').filter(Boolean).length
+      : null;
+    const images = [...document.images].filter((image) => image.complete && image.naturalWidth === 0 && image.currentSrc);
+    return {
+      header: Boolean(document.querySelector('.ssz-archive-header h1')),
+      toolbar: Boolean(document.querySelector('[data-archive-toolbar]')),
+      count: Boolean(document.querySelector('.ssz-archive-toolbar__count')),
+      filterToggle: Boolean(document.querySelector('[data-archive-filters-toggle]')),
+      ordering: Boolean(document.querySelector('.woocommerce-ordering select')),
+      grid: Boolean(grid),
+      columnCount,
+      expectedColumns: expected,
+      categoryNav: Boolean(document.querySelector('.ssz-archive-category-nav')),
+      brokenImages: images.length,
+      horizontalOverflow: Math.max(root?.scrollWidth ?? 0, body?.scrollWidth ?? 0) > (root?.clientWidth ?? 0) + 2,
+    };
+  }, expectedColumns);
+
+  const drawer = page.locator('[data-archive-filter-shell]');
+  const panel = page.locator('[data-archive-filter-shell] .ssz-filter-drawer__panel');
+  const filterToggle = page.locator('[data-archive-filters-toggle]');
+  const drawerState = {
+    configured: await filterToggle.count() > 0,
+    opened: null,
+    bodyScrollLock: null,
+    focusInside: null,
+    closedByEscape: null,
+    focusRestored: null,
+    accordion: { configured: false, expanded: null, collapsed: null },
+  };
+
+  if (drawerState.configured) {
+    await filterToggle.click();
+    await page.waitForTimeout(60);
+    drawerState.opened = await panel.isVisible() && await filterToggle.getAttribute('aria-expanded') === 'true';
+    drawerState.bodyScrollLock = await page.evaluate(() => getComputedStyle(document.documentElement).overflow === 'hidden' && getComputedStyle(document.body).overflow === 'hidden');
+    drawerState.focusInside = await page.evaluate(() => Boolean(document.activeElement?.closest('[data-archive-filter-shell]')));
+    const accordion = page.locator('[data-archive-accordion]').first();
+    drawerState.accordion.configured = await accordion.count() > 0;
+    if (drawerState.accordion.configured) {
+      const wasExpanded = await accordion.getAttribute('aria-expanded') === 'true';
+      await accordion.click();
+      drawerState.accordion[wasExpanded ? 'collapsed' : 'expanded'] = await accordion.getAttribute('aria-expanded') === (wasExpanded ? 'false' : 'true');
+      await accordion.click();
+      drawerState.accordion[wasExpanded ? 'expanded' : 'collapsed'] = await accordion.getAttribute('aria-expanded') === (wasExpanded ? 'true' : 'false');
+    }
+    await page.keyboard.press('Escape');
+    drawerState.closedByEscape = !(await panel.isVisible()) && await filterToggle.getAttribute('aria-expanded') === 'false';
+    drawerState.focusRestored = await page.evaluate(() => document.activeElement?.matches('[data-archive-filters-toggle]') ?? false);
+  }
+
+  return { ...archive, drawer: drawerState };
+};
+
 const browser = await chromium.launch({ headless: true, executablePath });
 const results = [];
+let archiveFunctional = {
+  filterSubmit: false,
+  filterQuery: null,
+  activeChips: false,
+  sorting: false,
+  popularityFirst: null,
+  categoryArchive: false,
+  brandArchive: false,
+  emptyState: false,
+  pagination: false,
+  consoleErrors: [],
+  pageErrors: [],
+};
 
 try {
   for (const width of widths) {
@@ -433,6 +507,7 @@ try {
     });
     const shopColumns = width < 768 ? 2 : width <= 1024 ? 3 : 4;
     const shopProductCards = await inspectProductCards(shopPage, { expectedColumns: shopColumns });
+    const shopArchive = await inspectArchivePage(shopPage, shopColumns);
     await shopPage.close();
 
     const pdpPage = await context.newPage();
@@ -630,6 +705,7 @@ try {
         consoleErrors: shopConsoleErrors,
         pageErrors: shopPageErrors,
         productCards: shopProductCards,
+        archive: shopArchive,
       },
       pdp: {
         responseStatus: pdpResponse?.status() ?? null,
@@ -650,11 +726,68 @@ try {
 
     await context.close();
   }
+try {
+  const functionalContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const functionalPage = await functionalContext.newPage();
+  functionalPage.on('console', (message) => {
+    if (message.type() === 'error') archiveFunctional.consoleErrors.push(message.text());
+  });
+  functionalPage.on('pageerror', (error) => archiveFunctional.pageErrors.push(error.message));
+
+  await functionalPage.goto(new URL('shop/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+  const paginationPage = await functionalContext.newPage();
+  await paginationPage.goto(new URL('shop/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+  archiveFunctional.pagination = await paginationPage.locator('.woocommerce-pagination a.page-numbers').count() > 0;
+  await paginationPage.close();
+  await functionalPage.locator('[data-archive-filters-toggle]').click();
+  await functionalPage.locator('input[data-archive-filter-checkbox="filter_product_brand"]').first().check();
+  await functionalPage.locator('input[data-archive-filter-checkbox="filter_size"][value="m"]').check();
+  await functionalPage.getByRole('button', { name: 'Colour', exact: true }).click();
+  await functionalPage.locator('input[data-archive-filter-checkbox="filter_colour"][value="black"]').check();
+  await functionalPage.getByRole('button', { name: 'Price', exact: true }).click();
+  await functionalPage.locator('input[name="min_price"]').fill('20');
+  await functionalPage.locator('input[name="max_price"]').fill('130');
+  await functionalPage.getByRole('button', { name: 'Availability', exact: true }).click();
+  await functionalPage.locator('input[name="filter_stock_status"]').check();
+  await functionalPage.locator('[data-archive-filter-form] button[type="submit"]').click({ force: true });
+  await functionalPage.waitForLoadState('networkidle');
+  const filteredUrl = new URL(functionalPage.url());
+  archiveFunctional.filterQuery = filteredUrl.search;
+  archiveFunctional.filterSubmit = filteredUrl.searchParams.has('filter_product_brand') && filteredUrl.searchParams.get('filter_size') === 'm' && filteredUrl.searchParams.get('filter_colour') === 'black' && filteredUrl.searchParams.get('filter_stock_status') === 'instock';
+  archiveFunctional.activeChips = await functionalPage.locator('[data-archive-active-filters] .ssz-active-filter').count() >= 4;
+
+  const sortPage = await functionalContext.newPage();
+  await sortPage.goto(new URL('shop/?orderby=popularity', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+  archiveFunctional.sorting = await sortPage.locator('.woocommerce-ordering select').inputValue() === 'popularity';
+  archiveFunctional.popularityFirst = await sortPage.locator('ul.products .woocommerce-loop-product__title').first().innerText();
+  await sortPage.close();
+
+  const categoryPage = await functionalContext.newPage();
+  const categoryResponse = await categoryPage.goto(new URL('product-category/men/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+  archiveFunctional.categoryArchive = (categoryResponse?.status() ?? 500) < 400 && await categoryPage.locator('.ssz-archive-header h1').innerText() === 'Men';
+  await categoryPage.close();
+
+  const brandPage = await functionalContext.newPage();
+  const brandResponse = await brandPage.goto(new URL('brand/arena/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+  archiveFunctional.brandArchive = (brandResponse?.status() ?? 500) < 400 && await brandPage.locator('.ssz-archive-header h1').innerText() === 'Arena';
+  await brandPage.close();
+
+  const emptyPage = await functionalContext.newPage();
+  await emptyPage.goto(new URL('shop/?min_price=9999', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+  archiveFunctional.emptyState = await emptyPage.locator('.ssz-archive-empty').isVisible() && await emptyPage.getByText('No products found', { exact: true }).isVisible();
+  await emptyPage.close();
+
+  await functionalPage.close();
+  await functionalContext.close();
+} catch (error) {
+  archiveFunctional.pageErrors.push(error.message);
+}
+
 } finally {
   await browser.close();
 }
 
-console.log(JSON.stringify({ baseUrl, executablePath, requireLocalMenu, fallbackContract, results }, null, 2));
+console.log(JSON.stringify({ baseUrl, executablePath, requireLocalMenu, fallbackContract, results, archiveFunctional }, null, 2));
 
 const failures = results.filter((result) => {
   const mobileFailure = result.menuState.checked && (
@@ -704,6 +837,8 @@ const failures = results.filter((result) => {
     !result.shop.productCards.onlyTwoImages || !result.shop.productCards.coverApparel || !result.shop.productCards.containEquipment || !result.shop.productCards.containEquipmentSourceUncropped || !result.shop.productCards.containSecondarySourceUncropped || !result.shop.productCards.saleState || !result.shop.productCards.soldOutState ||
     !result.shop.productCards.variablePrice || !result.shop.productCards.singleImageStable || !result.shop.productCards.noImageState || !result.shop.productCards.longTitleBounded || !result.shop.productCards.archiveColumns ||
     !result.shop.productCards.hover.checked || !result.shop.productCards.hover.changed || !result.shop.productCards.hover.secondaryLoaded ||
+    !result.shop.archive.header || !result.shop.archive.toolbar || !result.shop.archive.count || !result.shop.archive.filterToggle || !result.shop.archive.ordering || !result.shop.archive.grid || result.shop.archive.horizontalOverflow || result.shop.archive.brokenImages || result.shop.archive.columnCount !== result.shop.archive.expectedColumns ||
+    !result.shop.archive.drawer.opened || !result.shop.archive.drawer.bodyScrollLock || !result.shop.archive.drawer.focusInside || !result.shop.archive.drawer.closedByEscape || !result.shop.archive.drawer.focusRestored || (result.shop.archive.drawer.accordion.configured && (!result.shop.archive.drawer.accordion.expanded || !result.shop.archive.drawer.accordion.collapsed)) ||
     !result.pdp.themeVisible || result.pdp.responseStatus === null || result.pdp.responseStatus >= 400 || result.pdp.navigationError || result.pdp.horizontalOverflow || result.pdp.consoleErrors.length || result.pdp.pageErrors.length ||
     !result.pdp.product.mainFound || result.pdp.product.mainHasCardClass || result.pdp.product.mainHasFitClass || !result.pdp.product.relatedFound || !result.pdp.product.relatedCardContract ||
     !result.headerMode.colorLogoVisible || !result.headerMode.colorLogoLoaded || !result.headerMode.cartVisible ||
@@ -717,5 +852,10 @@ const failures = results.filter((result) => {
 
 if (failures.length) {
   console.error(`Visual UAT failed at: ${failures.map((failure) => failure.width).join(', ')}`);
+  process.exitCode = 1;
+}
+
+if (!archiveFunctional.filterSubmit || !archiveFunctional.activeChips || !archiveFunctional.sorting || archiveFunctional.popularityFirst !== 'STORE-005 TEST Simple Performance Suit' || !archiveFunctional.categoryArchive || !archiveFunctional.brandArchive || !archiveFunctional.emptyState || (process.env.SSZ_REQUIRE_PAGINATION === '1' && !archiveFunctional.pagination) || archiveFunctional.consoleErrors.length || archiveFunctional.pageErrors.length) {
+  console.error('Archive functional UAT failed');
   process.exitCode = 1;
 }

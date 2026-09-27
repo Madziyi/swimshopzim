@@ -65,6 +65,16 @@ For fresh-install fallback verification, use a disposable Local database or a te
 - Empty SKU fields do not alter the UI.
 - STORE-005 automated card UAT covers homepage New Arrivals/Best Sellers, shop/archive grids and a fixture PDP at all ten required widths, including card contract, hover, uncropped contain sources, badges, media fit, placeholder, long title, PDP root scope, related-loop classes, no nested anchors, no overflow and no runtime errors. Local browser verification also covers the Arena, Speedo and Spurt brand archives.
 
+## Shop/category pages — STORE-006
+
+- WooCommerce archives use the theme shell and native loop through hooks for Shop, `product_cat` and native `product_brand` contexts; no archive template override, AJAX or Product Collection/FSE implementation is used.
+- Archive headers expose title, optional description, brand identity fallback and a context-aware category rail. Shop and brand pages show approved Men, Women, Kids, Goggles and Equipment links; category pages show direct children or siblings.
+- The toolbar exposes result count, native sorting relabelled as Featured, Popularity, Newest, Price: Low to High and Price: High to Low, plus the filter trigger. Native pagination remains active.
+- The GET filter contract covers category, native `filter_product_brand`, native `filter_size`/`query_type_size`, native `filter_colour`/`query_type_colour`, `min_price`, `max_price` and in-stock availability. Multi-select values serialize as comma-separated query values; active chips, remove links and Clear all preserve archive context and sorting.
+- The accessible drawer supports accordions, Escape, backdrop/button close, focus restoration, focus trapping and body scroll lock. Search and navigation close events prevent stacked overlays.
+- Local-only fixtures provide native Arena, Speedo and Spurt brands, approved category hierarchy, `pa_size` XS/S/M/L/XL, `pa_colour` Black/Navy/Blue/Red, distinct prices, stock states and distinct `total_sales` values. No fixture rows, uploads or database exports are committed.
+- Browser UAT passed at exact widths 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px for no overflow, no broken images, archive structure, 2/3/4 grid columns, drawer focus/scroll/Escape/accordion behavior, sorting, category/brand contexts, multi-filter submit, active chips, empty state and no console/page errors. A focused Local pagination pass with temporary `woocommerce_catalog_rows=1` rendered four products on pages 1 and 2, then restored the normal three-row setting.
+
 ## Shop/category
 
 - WooCommerce archives use the theme shell and product grid at all required widths.
