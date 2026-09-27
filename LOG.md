@@ -172,3 +172,14 @@ Moved card classes to WooCommerce's `woocommerce_post_class` filter and explicit
 VERIFICATION
 Local WooCommerce Coming Soon mode was disabled only in the Local runtime so anonymous automated archive UAT could reach the fixture catalog. The repository contains no secrets, database exports, uploads or generated fixture media. STORE-006 archive shell/filter work and STORE-007 PDP redesign remain out of scope.
 
+## 2026-09-27 — STORE-005 Sol acceptance
+
+VERIFICATION
+Sol reviewed the complete STORE-005 branch through commit `ccbe27f02e811b91171f19dbf8b479bfd09e6bf0`, including the reusable WooCommerce card structure, 4:5 media frame, first-gallery hover behavior, SALE/SOLD OUT badges, native Product Brand text, native WooCommerce pricing, loop rating/add-to-cart removal, responsive archive/homepage behavior, and Local fixture coverage.
+
+VERIFICATION
+The targeted follow-up corrected two implementation details: contain-mode products now use uncropped WordPress `large` media while cover cards retain the hard-cropped `ssz-product-card` derivative, and product-card classes now use `woocommerce_post_class` with explicit exclusion of the queried single-product root while preserving related-product loop classes. Local verification covered wide 1200×500 equipment fixtures, PDP root/related loops, all ten responsive widths, brand archives, hover state, PHP lint, JSON/JavaScript validation, diff checks and theme packaging.
+
+DECISION
+STORE-005 is accepted. Pull request #4 was merged to `main` at merge commit `2f54e9135e146087923e4b07513d1b94ab0f0a8b`. STORE-006 — Shop/category pages becomes the next planned initiative.
+
