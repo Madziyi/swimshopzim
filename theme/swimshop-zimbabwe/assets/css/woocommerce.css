@@ -29,21 +29,6 @@
   width: auto;
   margin: 0;
 }
-.woocommerce ul.products li.product a img {
-  margin: 0 0 .85rem;
-  aspect-ratio: var(--ssz-product-media-ratio);
-  object-fit: var(--ssz-product-media-fit);
-  background: var(--ssz-color-surface-muted);
-}
-.woocommerce ul.products li.product .woocommerce-loop-product__title {
-  padding: 0;
-  margin: .25rem 0 .35rem;
-  color: var(--ssz-color-text);
-  font-size: var(--ssz-font-size-product);
-  font-weight: var(--ssz-font-weight-semibold);
-  line-height: 1.35;
-}
-.ssz-product-brand,
 .ssz-single-brand {
   color: var(--ssz-color-text-muted);
   font-size: var(--ssz-font-size-label);
@@ -53,23 +38,6 @@
 }
 .ssz-single-brand { margin-bottom: .65rem; }
 .ssz-single-brand a { border-bottom: 1px solid var(--ssz-border); }
-.woocommerce ul.products li.product .price { color: var(--ssz-color-text); font-size: var(--ssz-font-size-helper); font-weight: var(--ssz-font-weight-bold); }
-.woocommerce ul.products li.product .price del { color: var(--ssz-color-text-muted); opacity: 1; font-weight: var(--ssz-font-weight-medium); }
-.woocommerce ul.products li.product .price ins { text-decoration: none; }
-.woocommerce span.onsale {
-  min-height: auto;
-  min-width: auto;
-  line-height: 1;
-  left: .65rem;
-  top: .65rem;
-  padding: .45rem .55rem;
-  border-radius: var(--ssz-radius-none);
-  background: var(--ssz-color-black);
-  font-size: .64rem;
-  letter-spacing: .07em;
-  text-transform: uppercase;
-}
-.woocommerce ul.products li.product .button { display: none; }
 
 .woocommerce div.product { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(360px, .85fr); gap: clamp(2rem, 6vw, 6rem); }
 .woocommerce div.product div.images,
@@ -118,7 +86,6 @@
 
 @media (max-width: 767px) {
   .woocommerce ul.products { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem .7rem; }
-  .woocommerce ul.products li.product .woocommerce-loop-product__title { font-size: .82rem; }
   .woocommerce div.product { display: block; }
   .woocommerce div.product div.summary { position: static; margin-top: 1.5rem; }
   .woocommerce .woocommerce-result-count { float: none; }

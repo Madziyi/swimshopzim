@@ -152,3 +152,23 @@ The targeted follow-up corrected campaign stacking with an isolated media/overla
 DECISION
 STORE-004 is accepted. Pull request #3 was merged to `main` at merge commit `8f6f70cb102c2172b7dddd764eec9be4ae62ebec`. STORE-005 — Product Cards becomes the next planned initiative.
 
+## 2026-09-27 — STORE-005 implementation and verification
+
+IMPLEMENTATION
+Created branch `luna/STORE-005-product-cards` from accepted `main` SHA `3b912f8cfed5d3a6a27263f6278b1db34ccb3eeb`. Advanced the theme version to `0.5.0` and kept the normal WooCommerce loop anchor/title/price structure while replacing only the default thumbnail, sale flash, rating and add-to-cart presentation through hooks.
+
+IMPLEMENTATION
+Added reusable `assets/css/product-card.css` and theme-owned media/badge rendering. Cards use a stable 4:5 frame, responsive primary image markup, first-gallery-image hover, native first-brand text, SALE/SOLD OUT state logic, semantic two-line title treatment and native WooCommerce price HTML. Equipment/accessory category families receive contain media through `ssz_product_card_media_fit` and its filter; apparel remains cover by default.
+
+IMPLEMENTATION
+Removed loop ratings and add-to-cart controls through WooCommerce actions rather than CSS-only hiding. No quick-add, wishlist, quick-view, swatches or other card action tray was introduced. Preserved the homepage mobile scroll-snap rails and archive 2/3/4-column grid contract. Fixed archive-only logo sizing and generated unique search-field IDs so the shared shell remains overflow- and duplicate-ID-safe with WooCommerce active.
+
+VERIFICATION
+Created eight Local-only `STORE-005 TEST` products using existing native Arena, Speedo and Spurt brands: simple/in-stock with gallery, sale with gallery, variable price range with gallery, out-of-stock, equipment contain, single-image, no-image placeholder and long-title. Generated non-proprietary raster fixtures live only in Local uploads; no database, upload, generated image or runtime file is tracked.
+
+VERIFICATION
+Expanded `tools/visual-uat.mjs` to exercise homepage New Arrivals/Best Sellers and the shop/archive at 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px. All ten widths passed card structure, links, 4:5 ratio, image loading, first-gallery-only behavior, fine-pointer hover swap, badges, native price states, cover/contain fit, single/no-image behavior, title bounds, no nested anchors, no ratings/add-to-cart controls, archive columns, homepage rails, overflow and STORE-003/STORE-004 regression checks. Additional Local browser verification passed Arena, Speedo and Spurt brand archives plus the product-page related loop with the same single-link/no-button/no-rating card contract. Manual screenshots confirmed the mobile rail, archive grids, SALE/SOLD OUT, placeholder, equipment contain treatment and desktop hover state.
+
+VERIFICATION
+Local WooCommerce Coming Soon mode was disabled only in the Local runtime so anonymous automated archive UAT could reach the fixture catalog. The repository contains no secrets, database exports, uploads or generated fixture media. STORE-006 archive shell/filter work and STORE-007 PDP redesign remain out of scope.
+

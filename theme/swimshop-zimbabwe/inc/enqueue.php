@@ -15,6 +15,7 @@ function ssz_enqueue_assets() {
 
 	if ( class_exists( 'WooCommerce' ) ) {
 		wp_enqueue_style( 'ssz-woocommerce', SSZ_THEME_URI . '/assets/css/woocommerce.css', array( 'ssz-main' ), SSZ_THEME_VERSION );
+		wp_enqueue_style( 'ssz-product-card', SSZ_THEME_URI . '/assets/css/product-card.css', array( 'ssz-woocommerce' ), SSZ_THEME_VERSION );
 	}
 
 	if ( is_front_page() ) {

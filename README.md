@@ -31,6 +31,8 @@ STORE-003 uses the WordPress Primary Navigation as the source of truth for deskt
 
 STORE-004 uses the native Customizer panel `SwimShop Homepage` with separate Hero, Categories, Shop by Activity, Performance Campaign, Product Sections, Race Day / Training, Store Proposition and Newsletter sections. Existing `ssz_*` theme-mod IDs are preserved while controls move between sections. Homepage order is defined in `front-page.php`; homepage-only presentation is in `assets/css/homepage.css`. The newsletter remains disabled with customer-facing “Email sign-up is coming soon.” copy. New Arrivals and Best Sellers keep native WooCommerce shortcode/product-card rendering; final product-card behavior belongs to STORE-005.
 
+STORE-005 uses a reusable hook-first WooCommerce product-card system shared by homepage rails, shop/category/brand archives and related loops. Local-only `STORE-005 TEST` fixtures exercise primary/secondary media, SALE, SOLD OUT, variable pricing, equipment contain mode, single-image stability, placeholder media and long titles. The fixture seeder and generated uploads remain local runtime state and must not be committed or exported.
+
 ## Visual UAT
 
 With the Local site running and the custom theme active, install the development dependency and run the exact-width browser harness:
