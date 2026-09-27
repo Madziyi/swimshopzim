@@ -77,3 +77,17 @@ The milestone handoff records successful Local browser UAT at 360, 390, 430, 768
 DECISION
 STORE-002 is accepted. Pull request #1 was merged to `main` at merge commit `3e31887976a205427a0d418e2983fdd1d076a220`. STORE-003 — Header and Navigation becomes the next planned initiative.
 
+## 2026-09-26 — STORE-003 implementation and verification
+
+IMPLEMENTATION
+Created branch `luna/STORE-003-header-navigation` from accepted `main` SHA `65aee1a66cf770a556158805857dd994a583616a`. Extracted header presentation to `assets/css/header.css`, added the supplied unmodified color/white logo assets, and implemented the WordPress-driven desktop mega-menu plus mobile drawer, drilldown and accordion behavior. Search, account, cart count, sticky-header and announcement behavior remain native to the existing storefront shell.
+
+IMPLEMENTATION
+The local WordPress Primary Navigation was configured only in the Local database for UAT. It contains the required seven top-level entries, Men depth-1 groups with depth-2 links, and Brands links targeting the native Arena, Speedo and Spurt `product_brand` terms. This runtime menu configuration is not committed to source.
+
+VERIFICATION
+`SSZ_REQUIRE_LOCAL_MENU=1 npm run visual-uat` passed at exact widths 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px. The pass covered HTTP/theme state, no overflow, logo load, native account/cart URLs, search focus and restoration, menu mutual exclusion, mobile body scroll lock/focus trap/drilldown/accordion/backdrop/Escape close, desktop mega-menu geometry/Escape close, sticky header layering, keyboard focus visibility, and no console/page errors.
+
+OBSERVATION
+Visual inspection of the generated screenshots showed the supplied lockup, mobile/desktop breakpoint transition, full-width mega panel, responsive content containment and footer remain stable. Placeholder campaign/media content remains intentionally neutral and is outside STORE-003 scope.
+

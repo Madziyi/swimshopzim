@@ -27,6 +27,8 @@ Example from the repository root:
 
 The current Local activation and WooCommerce status are recorded in `LIVE-STATE.md`; keep that file authoritative when runtime state changes.
 
+STORE-003 uses the WordPress Primary Navigation as the source of truth for desktop and mobile header navigation. The local `DEVELOPMENT` menu used for UAT is runtime database configuration and is intentionally not exported into the repository. Configure a Primary Navigation menu in WordPress when reproducing the mega-menu UAT; the theme retains a seven-link fallback for a new install.
+
 ## Visual UAT
 
 With the Local site running and the custom theme active, install the development dependency and run the exact-width browser harness:
@@ -36,7 +38,7 @@ npm install
 npm run visual-uat
 ```
 
-The harness uses an installed Chrome or Edge executable, checks widths from 360px through 1920px, and writes ignored screenshots to `artifacts/uat/`. Set `SSZ_BROWSER_PATH` when the browser is not in a standard installation path.
+The harness uses an installed Chrome or Edge executable, checks exact widths `360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440, 1920`, and writes ignored screenshots to `artifacts/uat/`. Set `SSZ_BROWSER_PATH` when the browser is not in a standard installation path. Set `SSZ_REQUIRE_LOCAL_MENU=1` to fail when the local WordPress Primary Navigation has no configured child menu for mega-menu/drilldown checks.
 
 ## Linting
 
