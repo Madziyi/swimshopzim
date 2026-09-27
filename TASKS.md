@@ -3,7 +3,7 @@
 - [x] STORE-001 — Theme architecture and skeleton
 - [x] STORE-002 — Global design system
 - [x] STORE-003 — Header and navigation
-- [ ] STORE-004 — Homepage
+- [x] STORE-004 — Homepage
 - [ ] STORE-005 — Product cards
 - [ ] STORE-006 — Shop/category pages
 - [ ] STORE-007 — Product page
