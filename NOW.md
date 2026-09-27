@@ -1,8 +1,8 @@
 # Current Initiative
 
-**Active Initiative:** STORE-003 — Header and Navigation
-**Status:** READY FOR SOL REVIEW
-**Owner:** Luna
+**Active Initiative:** STORE-004 — Homepage
+**Status:** PLANNED / awaiting execution approval
+**Owner:** Sol until execution is handed to Luna
 
-**Previous:** STORE-002 — Global Design System
-**Next:** STORE-004 — Homepage
+**Previous:** STORE-003 — Header and Navigation
+**Next:** STORE-005 — Product Cards
