@@ -141,3 +141,14 @@ Removed repeated activity-card eyebrows so Racing, Training and Open Water each 
 VERIFICATION
 Targeted real-media campaign verification used two harmless local-only generated rasters. The authenticated Customizer panel and campaign controls were verified manually; because the in-app media picker did not open, the corresponding theme-mod values were assigned temporarily through a local-only WordPress runtime workaround. Desktop and mobile campaign images rendered above the single overlay, copy remained readable, and the CTA remained clickable. The temporary media and local uploads were removed; theme media settings were restored to the empty fallback state after testing.
 
+## 2026-09-27 — STORE-004 Sol acceptance
+
+VERIFICATION
+Sol reviewed the complete STORE-004 branch through commit `55e48f1e8fcab2e650a94e11bbb5994ec6e21508`, including the approved homepage section order, native WooCommerce category/brand integration, logo-first `product_brand` rendering, responsive hero and campaign media, activity and feature panels, proposition/newsletter treatment, Customizer panel organization, and expanded homepage UAT.
+
+VERIFICATION
+The targeted follow-up corrected campaign stacking with an isolated media/overlay/content layer contract, preserved existing `ssz_*` theme-mod IDs while moving controls into dedicated Customizer sections, removed duplicated activity titles, and replaced developer-facing newsletter language with customer-facing disabled-state copy. Local verification included real campaign media, all ten responsive widths, STORE-003 regression checks, PHP lint, JSON/JavaScript validation, diff checks and theme packaging.
+
+DECISION
+STORE-004 is accepted. Pull request #3 was merged to `main` at merge commit `8f6f70cb102c2172b7dddd764eec9be4ae62ebec`. STORE-005 — Product Cards becomes the next planned initiative.
+
