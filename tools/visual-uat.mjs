@@ -98,6 +98,97 @@ const inspectProductCards = async (page, { homepage = false, expectedColumns = n
     await page.mouse.move(1, 1);
   }
 
+  let swatchInteraction = {
+    configured: false,
+    variableSwatches: false,
+    singleColourOmitted: false,
+    maxFiveVisible: false,
+    overflowLabel: false,
+    accessibleLabels: false,
+    focusVisible: false,
+    selected: false,
+    sourceChanged: false,
+    dimensionsStable: false,
+    noNavigation: false,
+    noAddToCart: false,
+    noNestedInteractive: false,
+    hoverPreserved: false,
+  };
+
+  if (!homepage) {
+    const variableCard = cardsLocator.filter({ hasText: 'STORE-005 TEST Variable Training Suit' }).first();
+    const singleColourCard = cardsLocator.filter({ hasText: 'STORE-005 TEST Single Image Towel' }).first();
+    const variableSwatches = variableCard.locator('[data-ssz-colour-swatch]');
+    const visibleOverflow = variableCard.locator('.ssz-product-card__swatches-more');
+    const primary = variableCard.locator('.ssz-product-card__image--primary');
+    const media = variableCard.locator('.ssz-product-card__media');
+    swatchInteraction.configured = await variableCard.count() > 0;
+    swatchInteraction.variableSwatches = await variableSwatches.count() >= 2;
+    swatchInteraction.singleColourOmitted = await singleColourCard.locator('[data-ssz-colour-swatches]').count() === 0;
+    swatchInteraction.maxFiveVisible = await variableSwatches.count() <= 5;
+    swatchInteraction.overflowLabel = await visibleOverflow.count() === 1 && /^\+\d+$/.test((await visibleOverflow.innerText()).trim());
+    swatchInteraction.accessibleLabels = await variableSwatches.evaluateAll((items) => items.every((item) => item.getAttribute('aria-label')?.startsWith('Preview ')));
+    const beforeState = await page.evaluate(() => {
+      const card = [...document.querySelectorAll('li.ssz-product-card')].find((node) => node.textContent?.includes('STORE-005 TEST Variable Training Suit'));
+      const primaryImage = card?.querySelector('.ssz-product-card__image--primary');
+      const mediaFrame = card?.querySelector('.ssz-product-card__media');
+      const mediaRect = mediaFrame?.getBoundingClientRect();
+      return { source: primaryImage?.getAttribute('src') ?? null, width: mediaRect?.width ?? null, height: mediaRect?.height ?? null };
+    });
+    const beforeUrl = page.url();
+    const navy = variableCard.locator('[data-ssz-colour-swatch][data-colour-slug="navy"]');
+    if (await navy.count()) {
+      await navy.click();
+      await page.waitForTimeout(120);
+      await page.mouse.click(1, 1);
+      for (let attempt = 0; attempt < 80; attempt += 1) {
+        await page.keyboard.press('Tab');
+        const focusState = await navy.evaluate((element) => ({
+          active: document.activeElement === element,
+          visible: element.matches(':focus-visible') && getComputedStyle(element).outlineWidth === '3px',
+        }));
+        if (focusState.active) {
+          swatchInteraction.focusVisible = focusState.visible;
+          break;
+        }
+      }
+      const afterState = await page.evaluate(() => {
+        const card = [...document.querySelectorAll('li.ssz-product-card')].find((node) => node.textContent?.includes('STORE-005 TEST Variable Training Suit'));
+        const primaryImage = card?.querySelector('.ssz-product-card__image--primary');
+        const mediaFrame = card?.querySelector('.ssz-product-card__media');
+        const mediaRect = mediaFrame?.getBoundingClientRect();
+        const selected = card?.querySelector('[data-ssz-colour-swatch][data-colour-slug="navy"]');
+        return {
+          source: primaryImage?.getAttribute('src') ?? null,
+          width: mediaRect?.width ?? null,
+          height: mediaRect?.height ?? null,
+          selected: selected?.getAttribute('aria-pressed') === 'true',
+          exists: Boolean(card),
+          hasPreviewClass: Boolean(card?.classList.contains('ssz-product-card--colour-preview')),
+          noAddToCart: Boolean(card && !card.querySelector('.add_to_cart_button, .ajax_add_to_cart, .button')),
+          noNestedInteractive: Boolean(card && !card.querySelector('.woocommerce-loop-product__link button, .woocommerce-loop-product__link a')),
+        };
+      });
+      swatchInteraction.selected = afterState.selected;
+      swatchInteraction.sourceChanged = Boolean(beforeState.source && afterState.source && beforeState.source !== afterState.source);
+      swatchInteraction.dimensionsStable = Boolean(beforeState.width && afterState.width && beforeState.width === afterState.width && beforeState.height === afterState.height);
+      swatchInteraction.noNavigation = beforeUrl === page.url();
+      swatchInteraction.noAddToCart = afterState.noAddToCart;
+      swatchInteraction.noNestedInteractive = afterState.noNestedInteractive;
+      if (afterState.exists && swatchInteraction.noNavigation) {
+        await page.locator('li.ssz-product-card').filter({ hasText: 'STORE-005 TEST Variable Training Suit' }).first().locator('.ssz-product-card__media').hover();
+        await page.waitForTimeout(100);
+        swatchInteraction.hoverPreserved = await page.evaluate(() => {
+          const card = [...document.querySelectorAll('li.ssz-product-card')].find((node) => node.textContent?.includes('STORE-005 TEST Variable Training Suit'));
+          const primaryImage = card?.querySelector('.ssz-product-card__image--primary');
+          const secondaryImage = card?.querySelector('.ssz-product-card__image--secondary');
+          return Boolean(card && primaryImage && getComputedStyle(primaryImage).opacity === '1' && (!secondaryImage || getComputedStyle(secondaryImage).opacity === '0'));
+        });
+      }
+      await page.mouse.move(1, 1);
+    }
+  }
+
   const cardResult = await page.evaluate(({ homepage, expectedColumns }) => {
     const cards = [...document.querySelectorAll('ul.products li.ssz-product-card')];
     const style = (element) => element ? getComputedStyle(element) : null;
@@ -140,6 +231,10 @@ const inspectProductCards = async (page, { homepage = false, expectedColumns = n
         nestedAnchors: card.querySelectorAll('a a').length,
         hasLoopButton: Boolean(card.querySelector('.add_to_cart_button, .ajax_add_to_cart, .button')),
         hasRating: Boolean(card.querySelector('.star-rating, .woocommerce-loop-rating')),
+        retailPresentation: card.classList.contains('ssz-product-card--retail'),
+        swatchCount: card.querySelectorAll('[data-ssz-colour-swatch]').length,
+        swatchOverflow: card.querySelector('.ssz-product-card__swatches-more')?.textContent?.trim() ?? null,
+        swatchButtonsInLink: card.querySelectorAll('.woocommerce-loop-product__link button, .woocommerce-loop-product__link a').length,
       };
     });
     const findCard = (needle) => cardDetails.find((card) => card.name.includes(needle));
@@ -193,11 +288,13 @@ const inspectProductCards = async (page, { homepage = false, expectedColumns = n
       archiveColumns: expectedColumns === null || columnCount === expectedColumns,
       columnCount,
       homepageRail: !homepage || (railState.length === 2 && railState.every((rail) => rail.display === 'flex' && rail.overflowX === 'auto' && rail.scrollWidth >= rail.clientWidth)),
+      retailPresentation: homepage ? cardDetails.every((card) => !card.retailPresentation) : cardDetails.every((card) => card.retailPresentation),
+      swatchContract: homepage ? cardDetails.every((card) => card.swatchCount === 0) : cardDetails.every((card) => card.swatchButtonsInLink === 0),
       railState,
     };
   }, { homepage, expectedColumns });
 
-  return { ...cardResult, hover };
+  return { ...cardResult, hover, swatchInteraction };
 };
 
 const inspectProductPage = async (page) => page.evaluate(() => {
@@ -218,6 +315,13 @@ const inspectProductPage = async (page) => page.evaluate(() => {
       price: Boolean(price),
       aspectRatio: rect && rect.height ? Number((rect.width / rect.height).toFixed(3)) : null,
       anchorCount: card.querySelectorAll('a').length,
+      retailPresentation: card.classList.contains('ssz-product-card--retail'),
+      brandColor: card.querySelector('.ssz-product-card__brand') ? getComputedStyle(card.querySelector('.ssz-product-card__brand')).color : null,
+      titleWeight: title ? getComputedStyle(title).fontWeight : null,
+      priceWeight: price ? getComputedStyle(price).fontWeight : null,
+      swatchCount: card.querySelectorAll('[data-ssz-colour-swatch]').length,
+      swatchOverflow: card.querySelector('.ssz-product-card__swatches-more')?.textContent?.trim() ?? null,
+      swatchButtonsInLink: card.querySelectorAll('.woocommerce-loop-product__link button, .woocommerce-loop-product__link a').length,
       buttons: card.querySelectorAll('.add_to_cart_button, .ajax_add_to_cart, .button').length,
       ratings: card.querySelectorAll('.star-rating, .woocommerce-loop-rating').length,
     };
@@ -235,8 +339,39 @@ const inspectProductPage = async (page) => page.evaluate(() => {
       card.aspectRatio !== null && Math.abs(card.aspectRatio - .8) < .03 && card.anchorCount === 1 &&
       card.buttons === 0 && card.ratings === 0
     )),
+      relatedRetailPresentation: relatedCards.length > 0 && relatedDetails.every((card) => (
+        card.retailPresentation && card.brandColor === 'rgb(35, 136, 173)' && card.titleWeight === '700' && card.priceWeight === '600'
+      )),
+      relatedSwatchContract: relatedDetails.every((card) => card.swatchButtonsInLink === 0 && (card.swatchCount === 0 || card.swatchCount <= 5)),
   };
 });
+
+const inspectRelatedSwatchInteraction = async (page) => {
+  const card = page.locator('.related.products ul.products li.ssz-product-card').filter({ hasText: 'STORE-005 TEST Sale Racing Goggles' }).first();
+  const button = card.locator('[data-ssz-colour-swatch]').first();
+  if (!(await card.count()) || !(await button.count())) {
+    return { configured: false, selected: false, noNavigation: false, noNestedInteractive: false };
+  }
+  const url = page.url();
+  await button.click();
+  await page.waitForTimeout(100);
+  const state = await page.evaluate(() => {
+    const card = [...document.querySelectorAll('.related.products ul.products li.ssz-product-card')]
+      .find((node) => node.textContent?.includes('STORE-005 TEST Sale Racing Goggles'));
+    const selected = card?.querySelector('[data-ssz-colour-swatch][aria-pressed="true"]');
+    return {
+      exists: Boolean(card),
+      selected: Boolean(selected),
+      noNestedInteractive: Boolean(card && !card.querySelector('.woocommerce-loop-product__link button, .woocommerce-loop-product__link a')),
+    };
+  });
+  return {
+    configured: true,
+    selected: state.selected,
+    noNavigation: url === page.url(),
+    noNestedInteractive: state.exists && state.noNestedInteractive,
+  };
+};
 
 const inspectArchivePage = async (page, expectedColumns) => {
   const archive = await page.evaluate((expected) => {
@@ -264,6 +399,7 @@ const inspectArchivePage = async (page, expectedColumns) => {
         const media = card?.querySelector('.ssz-product-card__media');
         const brand = card?.querySelector('.ssz-product-card__brand');
         const title = card?.querySelector('.woocommerce-loop-product__title');
+        const swatches = card?.querySelector('.ssz-product-card__swatches');
         const price = card?.querySelector('.price');
         const saleCard = cards.find((item) => item.querySelector('.price del'));
         const salePrice = saleCard?.querySelector('.price');
@@ -292,6 +428,8 @@ const inspectArchivePage = async (page, expectedColumns) => {
           saleOldDecoration: saleOld ? getComputedStyle(saleOld).textDecorationLine : null,
           brandMediaGap: media && brand ? Number((brand.getBoundingClientRect().top - media.getBoundingClientRect().bottom).toFixed(1)) : null,
           brandTitleGap: brand && title ? Number((title.getBoundingClientRect().top - brand.getBoundingClientRect().bottom).toFixed(1)) : null,
+          swatchTitleGap: title && swatches ? Number((swatches.getBoundingClientRect().top - title.getBoundingClientRect().bottom).toFixed(1)) : null,
+          swatchPriceGap: swatches && price ? Number((price.getBoundingClientRect().top - swatches.getBoundingClientRect().bottom).toFixed(1)) : null,
           priceTitleGap: title && price ? Number((price.getBoundingClientRect().top - title.getBoundingClientRect().bottom).toFixed(1)) : null,
           rowGap: gridStyle ? gridStyle.rowGap : null,
           cardCount: cards.length,
@@ -584,6 +722,7 @@ try {
       };
     });
     const pdpProduct = await inspectProductPage(pdpPage);
+    const relatedSwatchInteraction = await inspectRelatedSwatchInteraction(pdpPage);
     await pdpPage.close();
     const search = { opened: false, inputFocused: false, closed: false, focusRestored: false, menuCloses: true };
     const searchToggle = page.locator('[data-search-toggle]');
@@ -765,6 +904,7 @@ try {
         consoleErrors: pdpConsoleErrors,
         pageErrors: pdpPageErrors,
         product: pdpProduct,
+        relatedSwatchInteraction,
       },
       search,
       menuState,
@@ -880,17 +1020,19 @@ const failures = results.filter((result) => {
     !result.homepageProductCards.cardContract || !result.homepageProductCards.primaryImagesLoaded || !result.homepageProductCards.secondaryImagesLoaded || !result.homepageProductCards.onlyTwoImages ||
     !result.homepageProductCards.coverApparel || !result.homepageProductCards.containEquipment || !result.homepageProductCards.containEquipmentSourceUncropped || !result.homepageProductCards.containSecondarySourceUncropped || !result.homepageProductCards.saleState || !result.homepageProductCards.soldOutState ||
     !result.homepageProductCards.variablePrice || !result.homepageProductCards.singleImageStable || !result.homepageProductCards.noImageState || !result.homepageProductCards.longTitleBounded ||
+    !result.homepageProductCards.retailPresentation || !result.homepageProductCards.swatchContract ||
     !result.homepageProductCards.hover.checked || !result.homepageProductCards.hover.changed || !result.homepageProductCards.hover.secondaryLoaded ||
     (result.width <= 767 && !result.homepageProductCards.homepageRail) ||
     !result.shop.themeVisible || result.shop.responseStatus === null || result.shop.responseStatus >= 400 || result.shop.navigationError || result.shop.horizontalOverflow || result.shop.duplicateIds.length ||
     result.shop.consoleErrors.length || result.shop.pageErrors.length || !result.shop.productCards.cardContract || !result.shop.productCards.primaryImagesLoaded || !result.shop.productCards.secondaryImagesLoaded ||
     !result.shop.productCards.onlyTwoImages || !result.shop.productCards.coverApparel || !result.shop.productCards.containEquipment || !result.shop.productCards.containEquipmentSourceUncropped || !result.shop.productCards.containSecondarySourceUncropped || !result.shop.productCards.saleState || !result.shop.productCards.soldOutState ||
     !result.shop.productCards.variablePrice || !result.shop.productCards.singleImageStable || !result.shop.productCards.noImageState || !result.shop.productCards.longTitleBounded || !result.shop.productCards.archiveColumns ||
+    !result.shop.productCards.retailPresentation || !result.shop.productCards.swatchContract || !result.shop.productCards.swatchInteraction.configured || !result.shop.productCards.swatchInteraction.variableSwatches || !result.shop.productCards.swatchInteraction.singleColourOmitted || !result.shop.productCards.swatchInteraction.maxFiveVisible || !result.shop.productCards.swatchInteraction.overflowLabel || !result.shop.productCards.swatchInteraction.accessibleLabels || !result.shop.productCards.swatchInteraction.focusVisible || !result.shop.productCards.swatchInteraction.selected || !result.shop.productCards.swatchInteraction.sourceChanged || !result.shop.productCards.swatchInteraction.dimensionsStable || !result.shop.productCards.swatchInteraction.noNavigation || !result.shop.productCards.swatchInteraction.noAddToCart || !result.shop.productCards.swatchInteraction.noNestedInteractive || !result.shop.productCards.swatchInteraction.hoverPreserved ||
     !result.shop.productCards.hover.checked || (result.width >= 768 && !result.shop.productCards.hover.changed) || !result.shop.productCards.hover.secondaryLoaded ||
-    !result.shop.archive.header || !result.shop.archive.toolbar || !result.shop.archive.count || !result.shop.archive.filterToggle || !result.shop.archive.ordering || !result.shop.archive.grid || result.shop.archive.horizontalOverflow || result.shop.archive.brokenImages || result.shop.archive.columnCount !== result.shop.archive.expectedColumns || result.shop.archive.presentation.brandColor !== 'rgb(35, 136, 173)' || result.shop.archive.presentation.titleWeight !== '700' || result.shop.archive.presentation.priceWeight !== '600' || result.shop.archive.presentation.saleCurrentWeight !== '600' || result.shop.archive.presentation.saleOldWeight !== '500' || result.shop.archive.presentation.saleOldDecoration !== 'line-through' || result.shop.archive.presentation.brandMediaGap < 10 || result.shop.archive.presentation.brandMediaGap > 18 || result.shop.archive.presentation.brandTitleGap < 4 || result.shop.archive.presentation.brandTitleGap > 9 || result.shop.archive.presentation.priceTitleGap < 4 || result.shop.archive.presentation.priceTitleGap > 9 || (result.width <= 430 && (result.shop.archive.presentation.minMediaCardRatio < .97 || result.shop.archive.presentation.columnGap < 7 || result.shop.archive.presentation.columnGap > 16 || result.shop.archive.presentation.rowMediaAlignment > 2 || result.shop.archive.presentation.rowInfoGap < 0 || result.shop.archive.presentation.rowInfoGap > 50)) ||
+    !result.shop.archive.header || !result.shop.archive.toolbar || !result.shop.archive.count || !result.shop.archive.filterToggle || !result.shop.archive.ordering || !result.shop.archive.grid || result.shop.archive.horizontalOverflow || result.shop.archive.brokenImages || result.shop.archive.columnCount !== result.shop.archive.expectedColumns || result.shop.archive.presentation.brandColor !== 'rgb(35, 136, 173)' || result.shop.archive.presentation.titleWeight !== '700' || result.shop.archive.presentation.priceWeight !== '600' || result.shop.archive.presentation.saleCurrentWeight !== '600' || result.shop.archive.presentation.saleOldWeight !== '500' || result.shop.archive.presentation.saleOldDecoration !== 'line-through' || result.shop.archive.presentation.brandMediaGap < 10 || result.shop.archive.presentation.brandMediaGap > 18 || result.shop.archive.presentation.brandTitleGap < 4 || result.shop.archive.presentation.brandTitleGap > 9 || result.shop.archive.presentation.swatchTitleGap < 4 || result.shop.archive.presentation.swatchTitleGap > 10 || result.shop.archive.presentation.swatchPriceGap < 4 || result.shop.archive.presentation.swatchPriceGap > 10 || (result.width <= 430 && (result.shop.archive.presentation.minMediaCardRatio < .97 || result.shop.archive.presentation.columnGap < 7 || result.shop.archive.presentation.columnGap > 16 || result.shop.archive.presentation.rowMediaAlignment > 2 || result.shop.archive.presentation.rowInfoGap < 0 || result.shop.archive.presentation.rowInfoGap > 50)) ||
     !result.shop.archive.drawer.opened || !result.shop.archive.drawer.bodyScrollLock || !result.shop.archive.drawer.focusInside || !result.shop.archive.drawer.closedByEscape || !result.shop.archive.drawer.focusRestored || (result.shop.archive.drawer.accordion.configured && (!result.shop.archive.drawer.accordion.expanded || !result.shop.archive.drawer.accordion.collapsed)) ||
     !result.pdp.themeVisible || result.pdp.responseStatus === null || result.pdp.responseStatus >= 400 || result.pdp.navigationError || result.pdp.horizontalOverflow || result.pdp.consoleErrors.length || result.pdp.pageErrors.length ||
-    !result.pdp.product.mainFound || result.pdp.product.mainHasCardClass || result.pdp.product.mainHasFitClass || !result.pdp.product.relatedFound || !result.pdp.product.relatedCardContract ||
+    !result.pdp.product.mainFound || result.pdp.product.mainHasCardClass || result.pdp.product.mainHasFitClass || !result.pdp.product.relatedFound || !result.pdp.product.relatedCardContract || !result.pdp.product.relatedRetailPresentation || !result.pdp.product.relatedSwatchContract || !result.pdp.relatedSwatchInteraction.configured || !result.pdp.relatedSwatchInteraction.selected || !result.pdp.relatedSwatchInteraction.noNavigation || !result.pdp.relatedSwatchInteraction.noNestedInteractive ||
     !result.headerMode.colorLogoVisible || !result.headerMode.colorLogoLoaded || !result.headerMode.cartVisible ||
     !result.search.opened || !result.search.inputFocused || !result.search.closed || !result.search.focusRestored ||
     mobileFailure || desktopFailure || missingConfiguredMenu ||

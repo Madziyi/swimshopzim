@@ -222,3 +222,17 @@ Measured the rendered Shop archive at 360, 390 and 430px: grid widths are 328/35
 HANDOFF
 STORE-006 spacing revision is complete and ready for Sol review. Filter layout, category rail, sorting, query logic, pagination and archive architecture remain unchanged. STORE-007 has not started and no merge has been performed.
 
+## 2026-09-27 — STORE-006 related retail cards and colour previews
+
+IMPLEMENTATION
+Extended the archive retail presentation to WooCommerce Related Products through the reusable `ssz-product-card--retail` class and an opt-in `ssz_product_card_retail_presentation` filter. Homepage New Arrivals and Best Sellers remain outside the retail scope. Added global `pa_colour` swatches between title and price for archive/related cards only, with maximum five visible terms plus accessible `+N` overflow. Known terms map through `ssz_product_colour_value`; unknown terms receive a neutral outlined swatch. The hook boundary now closes retail product links before sibling swatch/price content so buttons are never nested inside WooCommerce product anchors.
+
+IMPLEMENTATION
+Added the no-framework `product-card-swatches.js` enhancement. Variable cards serialize responsive variation image data for `attribute_pa_colour` mappings and update only the primary card image, `srcset`, `sizes`, alt text and selected state; explicit colour preview suppresses unrelated secondary hover. Simple multi-colour cards remain indicator-only without guessed image mapping. The Local-only variable fixture now has seven colours, Black/Navy/Blue image mappings, and existing simple multi-colour/single-colour fixtures cover the other display states.
+
+VERIFICATION
+The full ten-width Playwright UAT passed at 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px. It verified related retail styling, global `pa_colour` data, single-colour omission, five-swatch maximum, `+2` overflow, accessible labels/focus, no nested buttons or anchors, Navy image-source change, selected state, unchanged dimensions, no navigation/cart action and hover suppression after explicit preview. Archive filtering/sorting/drawer/category/brand/empty-state checks and STORE-003/004/005 regressions remained green. Exact-width Shop and PDP screenshots were manually reviewed at the requested mobile and desktop widths; SALE/SOLD OUT, 4:5 media and the PDP main variation form remain intact.
+
+HANDOFF
+STORE-006 related-card and colour-preview work is complete and ready for Sol review. Filter layout, query logic, category navigation, sorting, pagination, archive geometry and PDP variation controls remain unchanged. STORE-007 has not started and no merge has been performed.
+
