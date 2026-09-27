@@ -76,6 +76,14 @@ The approved homepage rhythm is editorial and image-led: Hero, Shop by Category,
 
 Brand presentation is logo-led on a quiet neutral surface. Native `product_brand` term media is authoritative, with optical max-width/max-height containment and accessible text fallback when a term has no logo. Product sections keep native WooCommerce card rendering and leave final card states to STORE-005.
 
+## STORE-005 product cards
+
+Product cards are reusable across homepage product rails, WooCommerce shop/category/brand archives and related loops. The approved hierarchy is 4:5 media, first-brand text, semantic product title and native WooCommerce price. Cards use a clean page background without a required surrounding card box or heavy shadow.
+
+`assets/css/product-card.css` owns card media, first-gallery-image hover, badges, brand/title/price treatment and responsive card behavior. `assets/css/woocommerce.css` remains responsible for archive grid structure and general WooCommerce/PDP/form styling.
+
+The first gallery image is the only alternate image and is revealed only for fine-pointer hover, with reduced-motion support. Apparel uses cover by default; known equipment/accessory category families use contain through the `ssz_product_card_media_fit` helper/filter while retaining the same 4:5 frame. Cover may use the hard-cropped 4:5 card derivative, but contain uses uncropped responsive media for both primary and first-gallery images. Card classes are scoped to normal WooCommerce loops; the queried main PDP product is excluded. Card badges are limited to SALE and SOLD OUT. Loop ratings and add-to-cart controls are removed through WooCommerce hooks; quick-add, wishlist, quick-view and swatches are intentionally out of scope.
+
 ## Accessibility contract
 
 Visible `:focus-visible` treatment, readable base sizing, usable control heights, semantic HTML compatibility and reduced motion are preserved. The existing skip link is unchanged. Full accessibility auditing remains STORE-013 scope.

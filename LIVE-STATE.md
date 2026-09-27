@@ -14,6 +14,8 @@
 - WooCommerce: Yes — WooCommerce 11.1.2 is present, and the live theme resolves WooCommerce cart/account/shop URLs
 - Browser opened: Yes — homepage, search results and footer loaded at the local domain
 - STORE-004 runtime check: the synced homepage renders with all ten sections, no horizontal overflow, no broken images and no console/page errors at the required browser widths. Local brand terms currently have no uploaded term logos, so the homepage exercises the accessible text fallback.
+- STORE-005 local fixture catalog: eight clearly named `STORE-005 TEST` products exist in the Local database only, using Arena, Speedo and Spurt native `product_brand` terms. The fixtures cover simple/in-stock with gallery, sale, variable price range, out of stock, equipment contain media, single-image, no-image placeholder and long-title states. Generated PNGs live under `wp-content/uploads/ssz-store-005-fixtures/`; neither database rows nor uploads are repository/export artifacts.
+- Local WooCommerce Coming Soon mode is disabled for automated shop/archive UAT so anonymous Playwright can exercise the fixture catalog. This is Local-only runtime state and is not a theme or production setting.
 
 ## HOSTINGER STAGING
 

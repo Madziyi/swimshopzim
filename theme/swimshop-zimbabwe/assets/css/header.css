@@ -38,7 +38,7 @@
 }
 .ssz-brand-lockup:hover,
 .custom-logo-link:hover { color: var(--ssz-color-black); }
-.ssz-brand-lockup__symbol {
+.ssz-header .ssz-brand-lockup__symbol {
   width: auto;
   height: 44px;
   flex: 0 0 auto;
@@ -356,7 +356,7 @@
   .ssz-header-actions { gap: .2rem; }
   .ssz-account-link { display: none; }
   .ssz-cart-label { display: none; }
-  .ssz-brand-lockup__symbol { height: 36px; }
+  .ssz-header .ssz-brand-lockup__symbol { height: 36px; }
   .ssz-brand-lockup__text { font-size: .72rem; }
   .ssz-search-panel__inner { align-items: stretch; flex-direction: column; gap: var(--ssz-space-sm); }
   .ssz-search-panel__heading { order: -1; }
@@ -371,7 +371,7 @@
 @media (max-width: 390px) {
   .ssz-icon-button { width: 38px; }
   .ssz-header-actions { gap: 0; }
-  .ssz-brand-lockup__symbol { height: 32px; }
+  .ssz-header .ssz-brand-lockup__symbol { height: 32px; }
   .ssz-brand-lockup__text { font-size: .66rem; }
 }
 
