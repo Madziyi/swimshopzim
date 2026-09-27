@@ -4,7 +4,7 @@
 - [x] STORE-002 — Global design system
 - [x] STORE-003 — Header and navigation
 - [x] STORE-004 — Homepage
-- [ ] STORE-005 — Product cards
+- [x] STORE-005 — Product cards
 - [ ] STORE-006 — Shop/category pages
 - [ ] STORE-007 — Product page
 - [ ] STORE-008 — Search
