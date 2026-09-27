@@ -29,6 +29,8 @@ The current Local activation and WooCommerce status are recorded in `LIVE-STATE.
 
 STORE-003 uses the WordPress Primary Navigation as the source of truth for desktop and mobile header navigation. The local `DEVELOPMENT` menu used for UAT is runtime database configuration and is intentionally not exported into the repository. Configure a Primary Navigation menu in WordPress when reproducing the mega-menu UAT; the theme retains a seven-link fallback for a new install.
 
+STORE-004 uses the native Customizer section `SwimShop Homepage` for hero media/copy/CTAs, category selectors, activities, campaign, product-section counts, feature panels, proposition copy and newsletter presentation. Homepage order is defined in `front-page.php`; homepage-only presentation is in `assets/css/homepage.css`. The newsletter is intentionally disabled until a future provider integration is selected. New Arrivals and Best Sellers keep native WooCommerce shortcode/product-card rendering; final product-card behavior belongs to STORE-005.
+
 ## Visual UAT
 
 With the Local site running and the custom theme active, install the development dependency and run the exact-width browser harness:

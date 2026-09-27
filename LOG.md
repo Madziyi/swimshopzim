@@ -113,3 +113,17 @@ The STORE-003 handoff records successful UAT at 360, 390, 430, 768, 1024, 1120, 
 DECISION
 STORE-003 is accepted. Pull request #2 was merged to `main` at merge commit `cb0bc621571707e42391b3384e66788071237d4e`. STORE-004 — Homepage becomes the next planned initiative.
 
+## 2026-09-27 — STORE-004 implementation and initial verification
+
+IMPLEMENTATION
+Created branch `luna/STORE-004-homepage` from accepted `main` SHA `857bf97348f646812f0d9c42bec44878616b3cc9`. Rebuilt the homepage into the approved ten-section order, added two hero CTAs and desktop/mobile media controls, introduced native category selectors and homepage-specific CSS, added activity/feature/newsletter sections, and preserved native WooCommerce product rendering for STORE-005.
+
+IMPLEMENTATION
+Homepage brands use the native `product_brand` taxonomy and `ssz_get_brand_thumbnail_url()` when a term logo exists. Brand links remain native term archives, with accessible text fallback for terms without media. Missing campaign, activity, feature and category media use intentional branded treatments without customer-facing placeholder labels. Newsletter controls are disabled and explicitly integration-ready; no provider or fake success behavior was added.
+
+VERIFICATION
+After syncing the theme to Local, the complete Playwright visual UAT passed at 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px. Homepage assertions passed for section order/presence, one H1, two hero CTAs, category/brand/activity/feature links, brand archive URLs, no forbidden labels, no broken images, no overflow, no console/page errors and the honest disabled newsletter state. STORE-003 header/search/mobile/desktop checks remained green.
+
+OBSERVATION
+The current Local catalog has no uploaded product-brand term logos, so Arena, Speedo and Spurt render through the accessible text fallback. No competitor imagery or logos were downloaded or committed. Authenticated Customizer verification exposed the homepage panel and its hero, category, activity, campaign, product-count, feature, proposition and newsletter controls; no settings were changed or saved.
+

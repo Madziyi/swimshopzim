@@ -68,6 +68,14 @@ Font weights are limited to regular, medium, semibold, bold and heavy. The produ
 
 `theme.json` exposes the same palette, spacing sizes, typography family and practical font sizes to WordPress editor controls. CSS variables remain the source for custom storefront components; the two systems use matching values rather than contradictory palettes.
 
+## STORE-004 homepage
+
+Homepage-only composition lives in `assets/css/homepage.css`; global primitives remain in `main.css`, header behavior remains in `header.css`, and WooCommerce behavior remains in `woocommerce.css`.
+
+The approved homepage rhythm is editorial and image-led: Hero, Shop by Category, New Arrivals, Shop the Brands, Shop by Activity, Performance Campaign, Best Sellers, Race Day / Training Equipment, Why SwimShop Zimbabwe, Newsletter, then Footer. Missing media uses navy/black geometric fallback treatments rather than customer-facing implementation labels.
+
+Brand presentation is logo-led on a quiet neutral surface. Native `product_brand` term media is authoritative, with optical max-width/max-height containment and accessible text fallback when a term has no logo. Product sections keep native WooCommerce card rendering and leave final card states to STORE-005.
+
 ## Accessibility contract
 
 Visible `:focus-visible` treatment, readable base sizing, usable control heights, semantic HTML compatibility and reduced motion are preserved. The existing skip link is unchanged. Full accessibility auditing remains STORE-013 scope.

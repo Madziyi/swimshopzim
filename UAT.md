@@ -38,6 +38,14 @@ For fresh-install fallback verification, use a disposable Local database or a te
 
 - Hero, category grid, brands, product sections, campaign and proposition blocks render safely with empty/default content.
 - Customizer content and desktop/mobile hero images render when configured.
+- Homepage order is Hero, Shop by Category, New Arrivals, Shop the Brands, Shop by Activity, Performance Campaign, Best Sellers, Race Day / Training Equipment, Why SwimShop Zimbabwe, Newsletter, then Footer.
+- Hero exposes one H1, desktop/mobile media controls, two CTA links and left/center content alignment; the primary hero image is the only homepage image with high fetch priority.
+- Categories use configurable top-level WooCommerce category selectors, with preferred-slug/catalog fallback and branded media fallback when thumbnails are absent.
+- Brands use the native `product_brand` taxonomy, term logo URLs when present, accessible brand-name text fallback otherwise, native term links and the canonical View All Brands link.
+- Shop by Activity contains Racing, Training and Open Water editorial links; campaign and Race Day / Training Equipment panels remain link-based and use intentional fallback treatments without placeholder labels.
+- New Arrivals uses newest/date ordering and Best Sellers uses WooCommerce popularity ordering. Product-card polish remains STORE-005 scope; mobile rails use native CSS scroll snap only.
+- Newsletter presentation is intentionally disabled and integration-ready. It does not submit data or claim subscription success until a provider is added.
+- Homepage UAT asserts section presence/order, one H1, two hero CTAs, category/brand/activity/feature links, brand image loading, no forbidden implementation labels, no broken images, no overflow and no runtime errors.
 
 ## Product cards
 

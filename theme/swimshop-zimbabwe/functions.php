@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'SSZ_THEME_VERSION', '0.3.0' );
+define( 'SSZ_THEME_VERSION', '0.4.0' );
 define( 'SSZ_THEME_DIR', get_template_directory() );
 define( 'SSZ_THEME_URI', get_template_directory_uri() );
 
@@ -18,6 +18,7 @@ $ssz_includes = array(
 	'/inc/enqueue.php',
 	'/inc/helpers.php',
 	'/inc/navigation.php',
+	'/inc/homepage-helpers.php',
 	'/inc/homepage-settings.php',
 	'/inc/accessibility.php',
 	'/inc/woocommerce/setup.php',
