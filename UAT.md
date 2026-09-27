@@ -42,10 +42,12 @@ For fresh-install fallback verification, use a disposable Local database or a te
 - Hero exposes one H1, desktop/mobile media controls, two CTA links and left/center content alignment; the primary hero image is the only homepage image with high fetch priority.
 - Categories use configurable top-level WooCommerce category selectors, with preferred-slug/catalog fallback and branded media fallback when thumbnails are absent.
 - Brands use the native `product_brand` taxonomy, term logo URLs when present, accessible brand-name text fallback otherwise, native term links and the canonical View All Brands link.
-- Shop by Activity contains Racing, Training and Open Water editorial links; campaign and Race Day / Training Equipment panels remain link-based and use intentional fallback treatments without placeholder labels.
+- Shop by Activity contains Racing, Training and Open Water editorial links with one prominent title per card; campaign and Race Day / Training Equipment panels remain link-based and use intentional fallback treatments without placeholder labels.
+- Performance Campaign establishes an isolated stacking context with media at layer 0, one image wash at layer 1 and content at layer 2. Real-media verification must exercise desktop/mobile campaign sources and preserve CTA contrast/clickability; fallback media must remain intentional.
+- Homepage Customizer settings live under the `SwimShop Homepage` panel with separate Hero, Categories, Shop by Activity, Performance Campaign, Product Sections, Race Day / Training, Store Proposition and Newsletter sections. Existing `ssz_*` theme-mod IDs remain unchanged.
 - New Arrivals uses newest/date ordering and Best Sellers uses WooCommerce popularity ordering. Product-card polish remains STORE-005 scope; mobile rails use native CSS scroll snap only.
-- Newsletter presentation is intentionally disabled and integration-ready. It does not submit data or claim subscription success until a provider is added.
-- Homepage UAT asserts section presence/order, one H1, two hero CTAs, category/brand/activity/feature links, brand image loading, no forbidden implementation labels, no broken images, no overflow and no runtime errors.
+- Newsletter presentation is intentionally disabled and uses customer-facing “Email sign-up is coming soon.” copy by default. It does not submit data or claim subscription success.
+- Homepage UAT asserts section presence/order, one H1, two hero CTAs, category/brand/activity/feature links, unique activity titles, campaign layer contract, brand image loading, no developer-facing newsletter wording, no forbidden implementation labels, no broken images, no overflow and no runtime errors.
 
 ## Product cards
 

@@ -130,6 +130,8 @@ try {
     });
 
     const overflow = pageState.scrollWidth > pageState.clientWidth + 2;
+    await page.evaluate(() => document.querySelector('[data-homepage-campaign]')?.scrollIntoView({ block: 'center' }));
+    await page.waitForTimeout(1000);
     const homepage = await page.evaluate(() => {
       const main = document.querySelector('main');
       const orderSelectors = [
@@ -163,6 +165,29 @@ try {
       const newsletterForm = main?.querySelector('[data-homepage-newsletter] form');
       const newsletterButton = newsletterForm?.querySelector('button');
       const newsletterInput = newsletterForm?.querySelector('input[type="email"]');
+      const newsletterCopy = [...(main?.querySelectorAll('[data-homepage-newsletter]') ?? [])]
+        .map((node) => node.textContent?.toLowerCase() ?? '')
+        .join(' ');
+      const newsletterForbiddenLabels = [
+        'integration',
+        'provider',
+        'backend',
+        'api',
+        'will be connected here',
+      ];
+      const campaign = main?.querySelector('[data-homepage-campaign]');
+      const campaignMedia = campaign?.querySelector('.ssz-campaign__media');
+      const campaignImage = campaign?.querySelector('.ssz-campaign__image');
+      const campaignSource = campaign?.querySelector('source');
+      const campaignContent = campaign?.querySelector('.ssz-campaign__content');
+      const campaignLayering = Boolean(campaign && campaignMedia && campaignContent && (() => {
+        const campaignStyle = getComputedStyle(campaign);
+        const mediaStyle = getComputedStyle(campaignMedia);
+        const overlayStyle = getComputedStyle(campaign, '::after');
+        const contentStyle = getComputedStyle(campaignContent);
+        return campaignStyle.position === 'relative' && campaignStyle.isolation === 'isolate' &&
+          mediaStyle.zIndex === '0' && overlayStyle.zIndex === '1' && contentStyle.zIndex === '2';
+      })());
 
       return {
         hero: Boolean(orderedNodes[0]),
@@ -183,8 +208,12 @@ try {
         activitySection: Boolean(orderedNodes[4]),
         activities: activityCards.length,
         activityLinks: activityCards.length === 0 || activityCards.every((card) => Boolean(card.getAttribute('href'))),
+        activityTitlesUnique: activityCards.length === 0 || activityCards.every((card) => card.querySelectorAll('strong').length === 1 && card.querySelectorAll('.ssz-eyebrow').length === 0),
         campaignSection: Boolean(orderedNodes[5]),
         campaignCta: Boolean(main?.querySelector('[data-homepage-campaign] a[href]')),
+        campaignMediaLoaded: !campaignImage || (campaignImage.complete && campaignImage.naturalWidth > 0),
+        campaignMobileSource: !campaignSource || Boolean(campaignSource.getAttribute('srcset')),
+        campaignLayering,
         newArrivals: Boolean(orderedNodes[2]),
         bestSellers: Boolean(orderedNodes[6]),
         featurePanels: featurePanels.length,
@@ -192,11 +221,13 @@ try {
         proposition: Boolean(orderedNodes[8]),
         newsletter: Boolean(orderedNodes[9]),
         newsletterHonest: Boolean(newsletterForm && newsletterButton?.disabled && newsletterInput?.disabled && newsletterForm.hasAttribute('aria-describedby')),
+        newsletterForbiddenLabels: newsletterForbiddenLabels.filter((label) => newsletterCopy.includes(label)),
         sectionOrder: positions.every((position, index) => position >= 0 && (index === 0 || position > positions[index - 1])),
         forbiddenLabels: forbiddenLabels.filter((label) => pageText.includes(label)),
         brokenImages: brokenImages.length,
       };
     });
+    await page.evaluate(() => window.scrollTo(0, 0));
     const search = { opened: false, inputFocused: false, closed: false, focusRestored: false, menuCloses: true };
     const searchToggle = page.locator('[data-search-toggle]');
     const searchPanel = page.locator('[data-search-panel]');
@@ -408,9 +439,9 @@ const failures = results.filter((result) => {
     !result.homepage.categorySection || !result.homepage.categoryLinks ||
     !result.homepage.brandSection || !result.homepage.brandLinks || !result.homepage.brandLinksToArchives ||
     !result.homepage.brandImagesLoaded || !result.homepage.activitySection || result.homepage.activities !== 3 || !result.homepage.activityLinks ||
-    !result.homepage.campaignSection || !result.homepage.campaignCta || !result.homepage.newArrivals || !result.homepage.bestSellers ||
+    !result.homepage.activityTitlesUnique || !result.homepage.campaignSection || !result.homepage.campaignCta || !result.homepage.campaignMediaLoaded || !result.homepage.campaignMobileSource || !result.homepage.campaignLayering || !result.homepage.newArrivals || !result.homepage.bestSellers ||
     result.homepage.featurePanels !== 2 || !result.homepage.featureLinks || !result.homepage.proposition || !result.homepage.newsletter ||
-    !result.homepage.newsletterHonest || !result.homepage.sectionOrder || result.homepage.forbiddenLabels.length || result.homepage.brokenImages ||
+    !result.homepage.newsletterHonest || result.homepage.newsletterForbiddenLabels.length || !result.homepage.sectionOrder || result.homepage.forbiddenLabels.length || result.homepage.brokenImages ||
     !result.headerMode.colorLogoVisible || !result.headerMode.colorLogoLoaded || !result.headerMode.cartVisible ||
     !result.search.opened || !result.search.inputFocused || !result.search.closed || !result.search.focusRestored ||
     mobileFailure || desktopFailure || missingConfiguredMenu ||

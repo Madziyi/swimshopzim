@@ -9,25 +9,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-if ( class_exists( 'WP_Customize_Control' ) && ! class_exists( 'SSZ_Customize_Heading_Control' ) ) {
-	class SSZ_Customize_Heading_Control extends WP_Customize_Control {
-		public $type = 'ssz-heading';
-
-		public function render_content() {
-			if ( $this->label ) {
-				echo '<h3 class="ssz-customize-heading">' . esc_html( $this->label ) . '</h3>';
-			}
-			if ( $this->description ) {
-				echo '<p class="description">' . esc_html( $this->description ) . '</p>';
-			}
-		}
-	}
-}
-
 function ssz_customize_register( $wp_customize ) {
 	$defaults = ssz_homepage_defaults();
 
-	$wp_customize->add_section(
+	$wp_customize->add_panel(
 		'ssz_homepage',
 		array(
 			'title'       => __( 'SwimShop Homepage', 'swimshop-zimbabwe' ),
@@ -36,21 +21,62 @@ function ssz_customize_register( $wp_customize ) {
 		)
 	);
 
-	$add_heading = function ( $id, $label, $description = '' ) use ( $wp_customize ) {
-		$wp_customize->add_control(
-			new SSZ_Customize_Heading_Control(
-				$wp_customize,
-				$id,
-				array(
-					'label'       => $label,
-					'description' => $description,
-					'section'     => 'ssz_homepage',
-				)
+	$sections = array(
+		'announcement' => array(
+			'id'    => 'ssz_homepage_announcement',
+			'title' => __( 'Announcement', 'swimshop-zimbabwe' ),
+		),
+		'hero' => array(
+			'id'          => 'ssz_homepage_hero',
+			'title'       => __( 'Hero', 'swimshop-zimbabwe' ),
+			'description' => __( 'One campaign image, two clear shopping paths. Use a mobile crop where the desktop image does not compose well.', 'swimshop-zimbabwe' ),
+		),
+		'categories' => array(
+			'id'          => 'ssz_homepage_categories',
+			'title'       => __( 'Categories', 'swimshop-zimbabwe' ),
+			'description' => __( 'Choose up to five top-level WooCommerce categories. Automatic selection uses sensible swimming slugs, then catalog order.', 'swimshop-zimbabwe' ),
+		),
+		'activities' => array(
+			'id'          => 'ssz_homepage_activities',
+			'title'       => __( 'Shop by Activity', 'swimshop-zimbabwe' ),
+			'description' => __( 'Give swimmers three clear reasons to enter the store.', 'swimshop-zimbabwe' ),
+		),
+		'campaign' => array(
+			'id'    => 'ssz_homepage_campaign',
+			'title' => __( 'Performance Campaign', 'swimshop-zimbabwe' ),
+		),
+		'products' => array(
+			'id'          => 'ssz_homepage_products',
+			'title'       => __( 'Product Sections', 'swimshop-zimbabwe' ),
+			'description' => __( 'Product cards remain WooCommerce-owned and will receive their final STORE-005 treatment later.', 'swimshop-zimbabwe' ),
+		),
+		'features' => array(
+			'id'    => 'ssz_homepage_features',
+			'title' => __( 'Race Day / Training', 'swimshop-zimbabwe' ),
+		),
+		'proposition' => array(
+			'id'    => 'ssz_homepage_proposition',
+			'title' => __( 'Store Proposition', 'swimshop-zimbabwe' ),
+		),
+		'newsletter' => array(
+			'id'    => 'ssz_homepage_newsletter',
+			'title' => __( 'Newsletter', 'swimshop-zimbabwe' ),
+		),
+	);
+
+	foreach ( $sections as $section ) {
+		$wp_customize->add_section(
+			$section['id'],
+			array(
+				'title'       => $section['title'],
+				'description' => isset( $section['description'] ) ? $section['description'] : '',
+				'panel'       => 'ssz_homepage',
 			)
 		);
-	};
+	}
 
-	$add_setting = function ( $id, $label, $default, $type = 'text', $sanitize = 'sanitize_text_field' ) use ( $wp_customize ) {
+	$section = $sections['announcement']['id'];
+	$add_setting = function ( $id, $label, $default, $type = 'text', $sanitize = 'sanitize_text_field' ) use ( $wp_customize, &$section ) {
 		$wp_customize->add_setting(
 			$id,
 			array(
@@ -62,13 +88,13 @@ function ssz_customize_register( $wp_customize ) {
 			$id,
 			array(
 				'label'   => $label,
-				'section' => 'ssz_homepage',
+				'section' => $section,
 				'type'    => $type,
 			)
 		);
 	};
 
-	$add_media = function ( $id, $label ) use ( $wp_customize ) {
+	$add_media = function ( $id, $label ) use ( $wp_customize, &$section ) {
 		$wp_customize->add_setting(
 			$id,
 			array(
@@ -82,17 +108,16 @@ function ssz_customize_register( $wp_customize ) {
 				$id,
 				array(
 					'label'     => $label,
-					'section'   => 'ssz_homepage',
+					'section'   => $section,
 					'mime_type' => 'image',
 				)
 			)
 		);
 	};
 
-	$add_heading( 'ssz_heading_announcement', __( 'Announcement', 'swimshop-zimbabwe' ) );
 	$add_setting( 'ssz_announcement', __( 'Announcement text', 'swimshop-zimbabwe' ), __( 'Performance swimwear and equipment for every lane.', 'swimshop-zimbabwe' ) );
 
-	$add_heading( 'ssz_heading_hero', __( 'Hero', 'swimshop-zimbabwe' ), __( 'One campaign image, two clear shopping paths. Use a mobile crop where the desktop image does not compose well.', 'swimshop-zimbabwe' ) );
+	$section = $sections['hero']['id'];
 	$add_media( 'ssz_hero_image', __( 'Hero desktop image', 'swimshop-zimbabwe' ) );
 	$add_media( 'ssz_hero_image_mobile', __( 'Hero mobile image', 'swimshop-zimbabwe' ) );
 	$add_setting( 'ssz_hero_eyebrow', __( 'Hero eyebrow', 'swimshop-zimbabwe' ), $defaults['hero_eyebrow'] );
@@ -110,7 +135,7 @@ function ssz_customize_register( $wp_customize ) {
 		'center' => __( 'Center', 'swimshop-zimbabwe' ),
 	);
 
-	$add_heading( 'ssz_heading_categories', __( 'Categories', 'swimshop-zimbabwe' ), __( 'Choose up to five top-level WooCommerce categories. Automatic selection uses sensible swimming slugs, then catalog order.', 'swimshop-zimbabwe' ) );
+	$section = $sections['categories']['id'];
 	$category_choices = ssz_get_homepage_category_choices();
 	for ( $index = 1; $index <= 5; $index++ ) {
 		$id = 'ssz_home_category_' . $index;
@@ -125,14 +150,14 @@ function ssz_customize_register( $wp_customize ) {
 			$id,
 			array(
 				'label'   => sprintf( __( 'Category %d', 'swimshop-zimbabwe' ), $index ),
-				'section' => 'ssz_homepage',
+				'section' => $section,
 				'type'    => 'select',
 				'choices' => $category_choices,
 			)
 		);
 	}
 
-	$add_heading( 'ssz_heading_activities', __( 'Shop by Activity', 'swimshop-zimbabwe' ), __( 'Give swimmers three clear reasons to enter the store.', 'swimshop-zimbabwe' ) );
+	$section = $sections['activities']['id'];
 	$activities = array( 'racing' => __( 'Racing', 'swimshop-zimbabwe' ), 'training' => __( 'Training', 'swimshop-zimbabwe' ), 'open_water' => __( 'Open Water', 'swimshop-zimbabwe' ) );
 	foreach ( $activities as $slug => $label ) {
 		$add_media( 'ssz_activity_' . $slug . '_image', sprintf( __( '%s image', 'swimshop-zimbabwe' ), $label ) );
@@ -141,7 +166,7 @@ function ssz_customize_register( $wp_customize ) {
 		$add_setting( 'ssz_activity_' . $slug . '_url', sprintf( __( '%s URL', 'swimshop-zimbabwe' ), $label ), '', 'url', 'esc_url_raw' );
 	}
 
-	$add_heading( 'ssz_heading_campaign', __( 'Performance Campaign', 'swimshop-zimbabwe' ) );
+	$section = $sections['campaign']['id'];
 	$add_media( 'ssz_campaign_image', __( 'Campaign desktop image', 'swimshop-zimbabwe' ) );
 	$add_media( 'ssz_campaign_image_mobile', __( 'Campaign mobile image', 'swimshop-zimbabwe' ) );
 	$add_setting( 'ssz_campaign_eyebrow', __( 'Campaign eyebrow', 'swimshop-zimbabwe' ), $defaults['campaign_eyebrow'] );
@@ -150,13 +175,13 @@ function ssz_customize_register( $wp_customize ) {
 	$add_setting( 'ssz_campaign_cta_label', __( 'Campaign CTA label', 'swimshop-zimbabwe' ), $defaults['campaign_cta_label'] );
 	$add_setting( 'ssz_campaign_cta_url', __( 'Campaign CTA URL', 'swimshop-zimbabwe' ), '', 'url', 'esc_url_raw' );
 
-	$add_heading( 'ssz_heading_products', __( 'Product Sections', 'swimshop-zimbabwe' ), __( 'Product cards remain WooCommerce-owned and will receive their final STORE-005 treatment later.', 'swimshop-zimbabwe' ) );
+	$section = $sections['products']['id'];
 	$add_setting( 'ssz_new_arrivals_heading', __( 'New Arrivals heading', 'swimshop-zimbabwe' ), $defaults['new_arrivals_heading'] );
 	$add_setting( 'ssz_new_arrivals_count', __( 'New Arrivals count', 'swimshop-zimbabwe' ), $defaults['new_arrivals_count'], 'number', 'absint' );
 	$add_setting( 'ssz_best_sellers_heading', __( 'Best Sellers heading', 'swimshop-zimbabwe' ), $defaults['best_sellers_heading'] );
 	$add_setting( 'ssz_best_sellers_count', __( 'Best Sellers count', 'swimshop-zimbabwe' ), $defaults['best_sellers_count'], 'number', 'absint' );
 
-	$add_heading( 'ssz_heading_features', __( 'Race Day / Training Equipment', 'swimshop-zimbabwe' ) );
+	$section = $sections['features']['id'];
 	$add_media( 'ssz_feature_race_image', __( 'Race Day image', 'swimshop-zimbabwe' ) );
 	$add_setting( 'ssz_feature_race_title', __( 'Race Day title', 'swimshop-zimbabwe' ), $defaults['race_title'] );
 	$add_setting( 'ssz_feature_race_text', __( 'Race Day text', 'swimshop-zimbabwe' ), $defaults['race_text'], 'textarea', 'sanitize_textarea_field' );
@@ -168,7 +193,7 @@ function ssz_customize_register( $wp_customize ) {
 	$add_setting( 'ssz_feature_training_cta_label', __( 'Training Equipment CTA label', 'swimshop-zimbabwe' ), $defaults['training_cta_label'] );
 	$add_setting( 'ssz_feature_training_cta_url', __( 'Training Equipment CTA URL', 'swimshop-zimbabwe' ), '', 'url', 'esc_url_raw' );
 
-	$add_heading( 'ssz_heading_proposition', __( 'Store Proposition', 'swimshop-zimbabwe' ) );
+	$section = $sections['proposition']['id'];
 	$add_setting( 'ssz_proposition_eyebrow', __( 'Proposition eyebrow', 'swimshop-zimbabwe' ), $defaults['proposition_eyebrow'] );
 	$add_setting( 'ssz_proposition_title', __( 'Proposition heading', 'swimshop-zimbabwe' ), $defaults['proposition_title'] );
 	$proposition_points = array( 'trusted', 'swimmers', 'simple' );
@@ -177,9 +202,9 @@ function ssz_customize_register( $wp_customize ) {
 		$add_setting( 'ssz_proposition_' . $point . '_text', sprintf( __( '%s point text', 'swimshop-zimbabwe' ), ucfirst( $point ) ), $defaults[ 'proposition_' . $point . '_text' ], 'textarea', 'sanitize_textarea_field' );
 	}
 
-	$add_heading( 'ssz_heading_newsletter', __( 'Newsletter', 'swimshop-zimbabwe' ), __( 'This is an integration-ready presentation only. No provider or subscription backend is installed in STORE-004.', 'swimshop-zimbabwe' ) );
+	$section = $sections['newsletter']['id'];
 	$add_setting( 'ssz_newsletter_title', __( 'Newsletter heading', 'swimshop-zimbabwe' ), $defaults['newsletter_title'] );
 	$add_setting( 'ssz_newsletter_text', __( 'Newsletter text', 'swimshop-zimbabwe' ), $defaults['newsletter_text'], 'textarea', 'sanitize_textarea_field' );
-	$add_setting( 'ssz_newsletter_note', __( 'Newsletter integration note', 'swimshop-zimbabwe' ), $defaults['newsletter_note'], 'textarea', 'sanitize_textarea_field' );
+	$add_setting( 'ssz_newsletter_note', __( 'Newsletter note', 'swimshop-zimbabwe' ), $defaults['newsletter_note'], 'textarea', 'sanitize_textarea_field' );
 }
 add_action( 'customize_register', 'ssz_customize_register' );

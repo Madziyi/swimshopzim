@@ -23,7 +23,6 @@ $activities = array(
 					<span class="ssz-activity-card__fallback" aria-hidden="true"></span>
 				<?php endif; ?>
 				<span class="ssz-activity-card__content">
-					<span class="ssz-eyebrow"><?php echo esc_html( $activity['title'] ); ?></span>
 					<strong><?php echo esc_html( $activity['title'] ); ?></strong>
 					<span><?php echo esc_html( $activity['text'] ); ?></span>
 					<span class="ssz-activity-card__cta"><?php esc_html_e( 'Explore', 'swimshop-zimbabwe' ); ?> <span aria-hidden="true">→</span></span>

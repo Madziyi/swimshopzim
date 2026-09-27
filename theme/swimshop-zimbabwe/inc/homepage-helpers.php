@@ -50,7 +50,7 @@ function ssz_homepage_defaults() {
 		'proposition_simple_text'   => __( 'A focused storefront designed for fast mobile purchasing.', 'swimshop-zimbabwe' ),
 		'newsletter_title'          => __( 'Stay in the lane', 'swimshop-zimbabwe' ),
 		'newsletter_text'           => __( 'New products, race gear and store updates.', 'swimshop-zimbabwe' ),
-		'newsletter_note'           => __( 'Sign-up integration will be connected here.', 'swimshop-zimbabwe' ),
+		'newsletter_note'           => __( 'Email sign-up is coming soon.', 'swimshop-zimbabwe' ),
 	);
 }
 

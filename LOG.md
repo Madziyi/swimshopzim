@@ -127,3 +127,17 @@ After syncing the theme to Local, the complete Playwright visual UAT passed at 3
 OBSERVATION
 The current Local catalog has no uploaded product-brand term logos, so Arena, Speedo and Spurt render through the accessible text fallback. No competitor imagery or logos were downloaded or committed. Authenticated Customizer verification exposed the homepage panel and its hero, category, activity, campaign, product-count, feature, proposition and newsletter controls; no settings were changed or saved.
 
+## 2026-09-27 — STORE-004 targeted review corrections
+
+IMPLEMENTATION
+Corrected Performance Campaign layering with an isolated stacking context: campaign media is layer 0, one combined image wash is layer 1, and campaign content is layer 2. Removed the duplicate global campaign media wash so uploaded photography is not double-darkened or hidden behind an ancestor.
+
+IMPLEMENTATION
+Replaced the long homepage section with a native `SwimShop Homepage` Customizer panel containing separate Hero, Categories, Shop by Activity, Performance Campaign, Product Sections, Race Day / Training, Store Proposition and Newsletter sections. Existing `ssz_*` setting IDs and values remain unchanged; the pseudo-heading control was removed.
+
+IMPLEMENTATION
+Removed repeated activity-card eyebrows so Racing, Training and Open Water each render one prominent title. Changed the default newsletter note to customer-facing “Email sign-up is coming soon.” while retaining the disabled, non-submitting form.
+
+VERIFICATION
+Targeted real-media campaign verification used two harmless local-only generated rasters. The authenticated Customizer panel and campaign controls were verified manually; because the in-app media picker did not open, the corresponding theme-mod values were assigned temporarily through a local-only WordPress runtime workaround. Desktop and mobile campaign images rendered above the single overlay, copy remained readable, and the CTA remained clickable. The temporary media and local uploads were removed; theme media settings were restored to the empty fallback state after testing.
+
