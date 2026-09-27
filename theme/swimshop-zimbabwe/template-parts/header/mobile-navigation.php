@@ -23,7 +23,7 @@
 					'container'      => false,
 					'menu_class'     => 'ssz-mobile-menu',
 					'menu_id'        => 'ssz-mobile-menu',
-					'fallback_cb'    => 'ssz_primary_menu_fallback',
+					'fallback_cb'    => 'ssz_primary_menu_fallback_mobile',
 					'depth'          => 3,
 					'walker'         => new SSZ_Primary_Nav_Walker( 'mobile' ),
 					'item_spacing'   => 'discard',

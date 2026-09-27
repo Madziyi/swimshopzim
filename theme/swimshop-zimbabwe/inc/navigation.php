@@ -192,7 +192,11 @@ class SSZ_Primary_Nav_Walker extends Walker_Nav_Menu {
 
 		$classes = apply_filters( 'nav_menu_css_class', array_filter( $classes ), $item, $args, $depth );
 		$id_attr = apply_filters( 'nav_menu_item_id', 'menu-item-' . $item_id, $item, $args, $depth );
-		$output .= '<li id="' . esc_attr( $id_attr ) . '" class="' . esc_attr( implode( ' ', $classes ) ) . '">';
+		if ( empty( $id_attr ) ) {
+			$id_attr = 'menu-item-' . $item_id;
+		}
+		$id_attr = '' !== $id_attr ? $id_attr . '-' . sanitize_html_class( $this->context ) : '';
+		$output .= '<li' . ssz_nav_attributes( array( 'id' => $id_attr, 'class' => implode( ' ', $classes ) ) ) . '>';
 
 		$submenu_id = 'ssz-submenu-' . $item_id . '-' . $this->context;
 		$attributes = array(
@@ -201,10 +205,6 @@ class SSZ_Primary_Nav_Walker extends Walker_Nav_Menu {
 			'href'   => ! empty( $item->url ) ? $item->url : '',
 			'class'  => 'ssz-nav-link',
 		);
-
-		if ( $has_children ) {
-			$attributes['aria-haspopup'] = 'true';
-		}
 
 		if ( ! empty( $item->current ) ) {
 			$attributes['aria-current'] = 'page';
@@ -223,6 +223,7 @@ class SSZ_Primary_Nav_Walker extends Walker_Nav_Menu {
 				'class'           => 'ssz-nav-toggle ssz-nav-toggle--' . $this->context,
 				'aria-expanded'   => 'false',
 				'aria-controls'   => $submenu_id,
+				'aria-haspopup'   => 'true',
 				'aria-label'      => sprintf( __( 'Open %s menu', 'swimshop-zimbabwe' ), wp_strip_all_tags( $title ) ),
 				'data-nav-toggle'  => 'true',
 			);
@@ -249,7 +250,7 @@ class SSZ_Primary_Nav_Walker extends Walker_Nav_Menu {
  * Clean fallback navigation for a brand-new install.
  * Once a Primary Navigation menu is assigned, WordPress controls the structure.
  */
-function ssz_primary_menu_fallback() {
+function ssz_primary_menu_fallback( $args = null, $context = 'desktop' ) {
 	$items = array(
 		__( 'Men', 'swimshop-zimbabwe' )          => ssz_get_shop_url(),
 		__( 'Women', 'swimshop-zimbabwe' )        => ssz_get_shop_url(),
@@ -260,9 +261,32 @@ function ssz_primary_menu_fallback() {
 		__( 'Sale', 'swimshop-zimbabwe' )         => ssz_get_shop_url(),
 	);
 
-	echo '<ul class="ssz-primary-menu ssz-primary-menu--fallback">';
+	$menu_class = 'mobile' === $context ? 'ssz-mobile-menu' : 'ssz-primary-menu';
+	if ( is_object( $args ) && ! empty( $args->menu_class ) ) {
+		$menu_class = sanitize_html_class( $args->menu_class );
+	}
+
+	echo '<ul class="' . esc_attr( $menu_class . ' ssz-primary-menu--fallback' ) . '">';
 	foreach ( $items as $label => $url ) {
 		printf( '<li class="ssz-nav-item"><a class="ssz-nav-link" href="%1$s">%2$s</a></li>', esc_url( $url ), esc_html( $label ) );
 	}
 	echo '</ul>';
+}
+
+/**
+ * Desktop fallback callback for wp_nav_menu().
+ *
+ * @param object|null $args Menu arguments when supplied by WordPress.
+ */
+function ssz_primary_menu_fallback_desktop( $args = null ) {
+	ssz_primary_menu_fallback( $args, 'desktop' );
+}
+
+/**
+ * Mobile fallback callback for wp_nav_menu().
+ *
+ * @param object|null $args Menu arguments when supplied by WordPress.
+ */
+function ssz_primary_menu_fallback_mobile( $args = null ) {
+	ssz_primary_menu_fallback( $args, 'mobile' );
 }

@@ -13,11 +13,12 @@
     if (restoreFocus) openButton.focus();
   };
 
-  const open = () => {
-		 document.dispatchEvent(new CustomEvent('ssz:close-menu'));
-		 panel.hidden = false;
-		 openButton.setAttribute('aria-expanded', 'true');
-		 input?.focus();
+	const open = () => {
+		document.dispatchEvent(new CustomEvent('ssz:close-menu'));
+		document.dispatchEvent(new CustomEvent('ssz:close-desktop-menus'));
+		panel.hidden = false;
+		openButton.setAttribute('aria-expanded', 'true');
+		input?.focus();
 	};
 
   openButton.addEventListener('click', () => {

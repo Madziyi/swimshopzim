@@ -91,3 +91,14 @@ VERIFICATION
 OBSERVATION
 Visual inspection of the generated screenshots showed the supplied lockup, mobile/desktop breakpoint transition, full-width mega panel, responsive content containment and footer remain stable. Placeholder campaign/media content remains intentionally neutral and is outside STORE-003 scope.
 
+## 2026-09-26 — STORE-003 targeted Sol corrections
+
+IMPLEMENTATION
+Updated the shared WordPress walker to suffix menu-item IDs by rendering context (`-desktop` and `-mobile`), preserving current-item/classes filtering while preventing duplicate DOM IDs. Disclosure ARIA now belongs to the actual toggle button; category anchors retain navigation semantics without `aria-haspopup`.
+
+IMPLEMENTATION
+Restricted desktop interaction state to top-level mega-menu items, so mouse entry, activation and search events clear other `.is-open` states and synchronize `aria-expanded`. Search opening now dismisses desktop mega menus through the existing custom-event pattern; activating a mega-menu item closes Search. Fresh-install fallback callbacks now share one renderer while emitting desktop-compatible `ssz-primary-menu` or mobile-compatible `ssz-mobile-menu` classes.
+
+VERIFICATION
+`SSZ_REQUIRE_LOCAL_MENU=1 npm run visual-uat` passed at all ten required widths. Every result reported zero duplicate IDs; desktop widths with two configured mega-menu items passed hover exclusivity, Search→mega close, mega→Search close, ARIA reset and Escape checks. Mobile drawer, drilldown, accordion, focus restoration, body scroll lock, overflow, sticky-header, logo, search and runtime-error checks remained green. The fallback contract source check passed without changing the configured Local database menu.
+

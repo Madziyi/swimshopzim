@@ -12,7 +12,7 @@
 			'theme_location' => 'primary',
 			'container'      => false,
 			'menu_class'     => 'ssz-primary-menu',
-			'fallback_cb'    => 'ssz_primary_menu_fallback',
+			'fallback_cb'    => 'ssz_primary_menu_fallback_desktop',
 			'depth'          => 3,
 			'walker'         => new SSZ_Primary_Nav_Walker( 'desktop' ),
 			'item_spacing'   => 'discard',

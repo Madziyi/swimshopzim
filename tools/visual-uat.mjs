@@ -9,6 +9,17 @@ const widths = [360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440, 1920];
 const outputDir = path.resolve('artifacts/uat');
 const requireLocalMenu = process.env.SSZ_REQUIRE_LOCAL_MENU === '1';
 
+const fallbackSources = await Promise.all([
+  fs.readFile(path.resolve('theme/swimshop-zimbabwe/inc/navigation.php'), 'utf8'),
+  fs.readFile(path.resolve('theme/swimshop-zimbabwe/template-parts/header/desktop-navigation.php'), 'utf8'),
+  fs.readFile(path.resolve('theme/swimshop-zimbabwe/template-parts/header/mobile-navigation.php'), 'utf8'),
+]);
+const fallbackContract = {
+  sharedRenderer: fallbackSources[0].includes('function ssz_primary_menu_fallback('),
+  desktopClass: fallbackSources[0].includes("'ssz-primary-menu'") && fallbackSources[1].includes('ssz_primary_menu_fallback_desktop'),
+  mobileClass: fallbackSources[0].includes("'ssz-mobile-menu'") && fallbackSources[2].includes('ssz_primary_menu_fallback_mobile'),
+};
+
 const browserCandidates = [
   process.env.SSZ_BROWSER_PATH,
   process.env.ProgramFiles && path.join(process.env.ProgramFiles, 'Google', 'Chrome', 'Application', 'chrome.exe'),
@@ -47,6 +58,7 @@ const findKeyboardFocus = async (page, predicate) => {
         outlineColor: style.outlineColor,
       };
     });
+
     if (focus && predicate(focus)) return focus;
   }
   return null;
@@ -86,6 +98,14 @@ try {
         themeVisible: Boolean(document.querySelector('.ssz-site-shell, .ssz-header[data-site-header], .ssz-hero')),
         headerPresent: Boolean(document.querySelector('[data-site-header]')),
       };
+    });
+
+    const duplicateIds = await page.evaluate(() => {
+      const counts = new Map();
+      document.querySelectorAll('[id]').forEach((element) => {
+        if (element.id) counts.set(element.id, (counts.get(element.id) ?? 0) + 1);
+      });
+      return [...counts.entries()].filter(([, count]) => count > 1).map(([id]) => id);
     });
 
     const headerMode = await page.evaluate(() => {
@@ -183,22 +203,49 @@ try {
 
     const desktop = {
       configured: false,
+      twoConfigured: false,
       opened: null,
       panelWithinViewport: null,
       closedByEscape: null,
       ariaReset: null,
+      exclusive: null,
+      searchClosesMega: null,
+      megaClosesSearch: null,
+      searchAriaReset: null,
     };
     if (!menuState.checked) {
-      const desktopToggle = page.locator('[data-primary-nav] [data-nav-toggle]').first();
-      desktop.configured = (await desktopToggle.count()) > 0;
+      const desktopToggles = page.locator('[data-primary-nav] > .ssz-primary-menu > .ssz-nav-item--has-children > [data-nav-toggle]');
+      const desktopToggle = desktopToggles.first();
+      const desktopToggleCount = await desktopToggles.count();
+      desktop.configured = desktopToggleCount > 0;
+      desktop.twoConfigured = desktopToggleCount >= 2;
       if (desktop.configured) {
         const panelId = await desktopToggle.getAttribute('aria-controls');
-        await desktopToggle.click();
         const panel = page.locator(`#${panelId}`);
+        await desktopToggle.click();
         await page.waitForTimeout(300);
         const box = await panel.boundingBox();
         desktop.opened = await panel.isVisible();
         desktop.panelWithinViewport = Boolean(box && box.x >= 0 && box.x + box.width <= width && box.y >= 0 && box.y + box.height <= height);
+
+        if (desktop.twoConfigured) {
+          const secondToggle = desktopToggles.nth(1);
+          const secondPanelId = await secondToggle.getAttribute('aria-controls');
+          const secondPanel = page.locator(`#${secondPanelId}`);
+          await secondToggle.hover();
+          await page.waitForTimeout(300);
+          desktop.exclusive = !(await panel.isVisible()) && await desktopToggle.getAttribute('aria-expanded') === 'false' && await secondPanel.isVisible();
+        }
+
+        await searchToggle.click();
+        await page.waitForTimeout(50);
+        desktop.searchClosesMega = !(await panel.isVisible()) && await searchPanel.isVisible();
+        desktop.searchAriaReset = await desktopToggle.getAttribute('aria-expanded') === 'false';
+        await page.locator('[data-search-close]').click();
+
+        await desktopToggle.click();
+        await page.waitForTimeout(300);
+        desktop.megaClosesSearch = await panel.isVisible() && !(await searchPanel.isVisible()) && await desktopToggle.getAttribute('aria-expanded') === 'true';
         await page.keyboard.press('Escape');
         await page.waitForTimeout(300);
         desktop.closedByEscape = !(await panel.isVisible());
@@ -241,6 +288,7 @@ try {
       headerMode,
       consoleErrors,
       pageErrors,
+      duplicateIds,
       search,
       menuState,
       desktop,
@@ -255,7 +303,7 @@ try {
   await browser.close();
 }
 
-console.log(JSON.stringify({ baseUrl, executablePath, requireLocalMenu, results }, null, 2));
+console.log(JSON.stringify({ baseUrl, executablePath, requireLocalMenu, fallbackContract, results }, null, 2));
 
 const failures = results.filter((result) => {
   const mobileFailure = result.menuState.checked && (
@@ -271,18 +319,29 @@ const failures = results.filter((result) => {
   const desktopFailure = !result.menuState.checked && (
     result.headerMode.desktopNavVisible !== true ||
     result.headerMode.mobileToggleVisible !== false ||
-    (result.desktop.configured && (result.desktop.opened !== true || result.desktop.panelWithinViewport !== true || result.desktop.closedByEscape !== true || result.desktop.ariaReset !== true))
+    (result.desktop.configured && (
+      result.desktop.opened !== true ||
+      result.desktop.panelWithinViewport !== true ||
+      result.desktop.closedByEscape !== true ||
+      result.desktop.ariaReset !== true ||
+      (result.desktop.twoConfigured && result.desktop.exclusive !== true) ||
+      result.desktop.searchClosesMega !== true ||
+      result.desktop.megaClosesSearch !== true ||
+      result.desktop.searchAriaReset !== true
+    ))
   );
   const missingConfiguredMenu = requireLocalMenu && !result.menuState.checked && !result.desktop.configured;
 
   return (
     result.responseStatus === null || result.responseStatus >= 400 || result.navigationError ||
     !result.themeVisible || result.horizontalOverflow || result.consoleErrors.length || result.pageErrors.length ||
+    result.duplicateIds.length ||
     !result.headerMode.colorLogoVisible || !result.headerMode.colorLogoLoaded || !result.headerMode.cartVisible ||
     !result.search.opened || !result.search.inputFocused || !result.search.closed || !result.search.focusRestored ||
     mobileFailure || desktopFailure || missingConfiguredMenu ||
     !result.stickyHeader.aboveContent || !result.stickyHeader.announcementScrolledAway ||
-    !result.focus.light?.focusVisible || !result.focus.dark?.focusVisible
+    !result.focus.light?.focusVisible || !result.focus.dark?.focusVisible ||
+    !fallbackContract.sharedRenderer || !fallbackContract.desktopClass || !fallbackContract.mobileClass
   );
 });
 

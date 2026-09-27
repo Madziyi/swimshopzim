@@ -6,16 +6,16 @@
   const mobileBackdrop = document.querySelector('[data-mobile-backdrop]');
   const rootMenu = document.querySelector('[data-mobile-nav] .ssz-mobile-menu');
 
-  const desktopItems = [...document.querySelectorAll('[data-primary-nav] .ssz-nav-item--has-children')];
+  const desktopItems = [...document.querySelectorAll('[data-primary-nav] > .ssz-primary-menu > .ssz-nav-item--has-children')];
 
   const focusable = (container) => [...container.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
     .filter((element) => !element.hidden && element.offsetParent !== null);
 
-	const closeDesktopMenus = (except = null) => {
+	const closeDesktopMenus = (except = null, dismiss = false) => {
 		desktopItems.forEach((item) => {
 			if (item !== except) {
 				item.classList.remove('is-open');
-				item.classList.remove('ssz-menu-dismissed');
+				item.classList.toggle('ssz-menu-dismissed', dismiss);
 				item.querySelector('[data-nav-toggle]')?.setAttribute('aria-expanded', 'false');
 			}
 		});
@@ -136,9 +136,14 @@
 		const toggle = item.querySelector(':scope > [data-nav-toggle]');
 		if (!toggle) return;
 
-		item.addEventListener('mouseenter', () => item.classList.remove('ssz-menu-dismissed'));
+		item.addEventListener('mouseenter', () => {
+			document.dispatchEvent(new CustomEvent('ssz:close-search'));
+			closeDesktopMenus(item);
+			item.classList.remove('ssz-menu-dismissed');
+		});
 		item.addEventListener('focusin', (event) => {
 			if (event.target === toggle || item.classList.contains('ssz-menu-dismissed')) return;
+			document.dispatchEvent(new CustomEvent('ssz:close-search'));
 			closeDesktopMenus(item);
 			item.classList.add('is-open');
 			toggle.setAttribute('aria-expanded', 'true');
@@ -146,12 +151,15 @@
 
 		toggle.addEventListener('click', () => {
 			const isOpen = item.classList.contains('is-open');
+			document.dispatchEvent(new CustomEvent('ssz:close-search'));
 			closeDesktopMenus(item);
 			item.classList.remove('ssz-menu-dismissed');
 			item.classList.toggle('is-open', !isOpen);
 			toggle.setAttribute('aria-expanded', String(!isOpen));
 		});
   });
+
+	document.addEventListener('ssz:close-desktop-menus', () => closeDesktopMenus(null, true));
 
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
