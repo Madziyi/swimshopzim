@@ -6,6 +6,7 @@ wp-content/cache/
 *.sql.gz
 *.zip
 .bootstrap-extract/
+swimshopzim-assets/
 
 # OS/editor noise
 .DS_Store

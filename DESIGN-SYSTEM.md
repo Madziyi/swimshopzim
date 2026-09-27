@@ -54,7 +54,15 @@ Font weights are limited to regular, medium, semibold, bold and heavy. The produ
 
 ## Responsive strategy
 
-**APPROVED:** The system is designed for approximately 360, 390, 430, 768, 1024, 1280, 1440 and 1920px viewports. Existing breakpoints remain limited to 1120px, 782px, 767px and 390px. Mobile is a deliberate layout with its own gutters, section rhythm, hero sizing, grids and footer structure. Header/mega-menu redesign remains STORE-003 scope.
+**APPROVED:** The system is designed for exact UAT widths 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px. Existing breakpoints remain limited to 1120px, 782px, 767px and 390px. Mobile is a deliberate layout with its own gutters, section rhythm, hero sizing, grids and footer structure.
+
+## STORE-003 header and navigation
+
+**APPROVED:** `theme/swimshop-zimbabwe/assets/css/header.css` is the source of truth for announcement, sticky-header, navigation, search-panel and mobile-drawer presentation. The announcement bar is non-sticky; the main header uses the shared sticky layer.
+
+**APPROVED:** The default lockup uses the supplied unmodified transparent PNGs in `assets/images/brand/` and renders the SWIMSHOP ZIMBABWE wordmark beside the symbol. A WordPress custom logo remains supported. Header and menu controls use theme-owned inline SVG icons only.
+
+**APPROVED:** Desktop begins at 1121px. The WordPress Primary Navigation owns the top-level structure; depth 1 renders as mega-menu group headings and depth 2 as links. Mobile through 1120px uses a fixed drawer with drilldown/accordion groups, native account/cart URLs, body scroll lock, focus trapping/restoration and Escape/backdrop close behavior.
 
 ## Editor alignment
 

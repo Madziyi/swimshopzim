@@ -2,7 +2,7 @@
 
 Visual UAT means opening the running Local WordPress site and interacting with the rendered page. Code inspection alone is not visual UAT.
 
-Required viewport checks: approximately 360, 390, 430, 768, 1024, 1280, 1440 and 1920 pixels wide.
+Required viewport checks: exact 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920 pixels wide.
 
 ## Global
 
@@ -16,12 +16,23 @@ Required viewport checks: approximately 360, 390, 430, 768, 1024, 1280, 1440 and
 - Announcement bar is readable and configurable.
 - Branding renders correctly with and without a custom logo.
 - Search and cart controls are visible and usable.
+- The announcement bar is non-sticky while the main header remains sticky.
+- The default lockup uses the supplied transparent color logo plus the SWIMSHOP ZIMBABWE wordmark; custom-logo output remains supported.
+- Desktop is active above 1120px and exposes the WordPress Primary Navigation with MEN, WOMEN, KIDS, EQUIPMENT, BRANDS, NEW ARRIVALS and SALE top-level entries.
+- Mobile is active through 1120px and exposes menu, search and bag controls; the drawer supports account access, drilldown, accordion groups, Escape/backdrop/button close, focus restoration and body scroll lock.
 
 ## Navigation
 
 - WordPress Primary Navigation controls desktop links.
+- Desktop child items render as a full-width mega menu with depth-1 group headings and depth-2 links.
+- Desktop top-level mega-menu state is exclusive: entering or activating another configured item clears the previous `.is-open` state and synchronizes `aria-expanded`.
+- Search and desktop mega-menu state are mutually exclusive in both directions.
 - Mobile menu opens, closes and exposes keyboard-accessible links.
+- Mobile child groups expose drilldown and accordion state through `aria-expanded` and `aria-controls`.
+- The rendered document contains no duplicate non-empty DOM IDs when desktop and mobile copies of the WordPress menu are both present.
 - Current fallback navigation is only a new-install safety net.
+
+For fresh-install fallback verification, use a disposable Local database or a temporary transaction that unassigns the Primary Navigation, render the exact viewport matrix, confirm the desktop fallback uses `ssz-primary-menu` and the mobile fallback uses `ssz-mobile-menu`, then restore the configured menu before ending the session. The automated harness also performs a safe source-level fallback contract check without altering the configured Local menu.
 
 ## Homepage
 
@@ -66,4 +77,4 @@ Required viewport checks: approximately 360, 390, 430, 768, 1024, 1280, 1440 and
 - Images have appropriate alternative text.
 - Reduced-motion preferences are respected.
 - Controls expose meaningful labels and expanded/collapsed state.
-
+- Inline SVG is used for header/menu/search/account/bag/chevron controls; remote icon fonts are not required.
