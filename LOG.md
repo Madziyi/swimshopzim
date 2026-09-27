@@ -211,3 +211,14 @@ Re-ran the complete ten-width visual UAT at 360, 390, 430, 768, 1024, 1120, 1121
 HANDOFF
 Visual revision is complete and ready for Sol review. The filter layout, archive query structure and all non-presentation STORE-006 architecture remain unchanged. STORE-007 has not started and no merge has been performed.
 
+## 2026-09-27 — STORE-006 spacing revision
+
+IMPLEMENTATION
+Diagnosed the live archive geometry before changing spacing. WooCommerce's responsive `li.product` rule was sizing cards to 48% of each CSS grid track, leaving the apparent horizontal dead space. Added an archive-only, higher-specificity correction so product cards and media fill their grid tracks, then set 12px mobile gutters, 24px mobile row gaps, moderate tablet/desktop gaps, 12px media-to-brand spacing, 5.6px brand-to-title spacing and 6.4px title-to-price spacing. Archive titles now use weight `700`; base and sale-current prices use weight `600`; sale-old prices remain muted and struck through. Homepage rails and shared STORE-005 card behavior remain unchanged.
+
+VERIFICATION
+Measured the rendered Shop archive at 360, 390 and 430px: grid widths are 328/358/398px, card and media widths are 158/173/193px, media/card ratio is `1.000`, column gap is 12px, row info-to-next-media gap is 24px and row media alignment is exact. The full ten-width Playwright UAT passed at 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px, including archive structure, filters, sorting, category/brand contexts, drawer behavior, media contracts, badges, hover, no overflow, no broken images and no runtime errors. Manual exact-width screenshots confirmed the compact two-column mobile rhythm and desktop 4-column presentation.
+
+HANDOFF
+STORE-006 spacing revision is complete and ready for Sol review. Filter layout, category rail, sorting, query logic, pagination and archive architecture remain unchanged. STORE-007 has not started and no merge has been performed.
+

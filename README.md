@@ -35,7 +35,7 @@ STORE-005 uses a reusable hook-first WooCommerce product-card system shared by h
 
 STORE-006 adds the shared Shop/category/brand archive framework through WooCommerce hooks. The archive header and approved category rail are theme-owned, while the native product grid, sorting and pagination remain WooCommerce-owned. Filters are GET-based and server-rendered, covering native brand/size/colour contracts plus category, price and in-stock availability. The filter drawer is progressive enhancement only: without JavaScript the GET form remains usable; JavaScript adds focus management, accordions, overlay coordination and comma-separated multi-select serialization. Local-only attributes and category assignments are seeded in the runtime for UAT and must not be exported.
 
-The STORE-006 visual refinement is archive-only: brand text uses a light SwimShop blue, titles use a lighter semibold treatment, and image/text/row spacing is tuned for a premium PLP rhythm. Homepage rails and STORE-005 media behavior remain on their existing shared-card rules.
+The STORE-006 visual refinement is archive-only: brand text uses a light SwimShop blue, cards fill their WooCommerce grid tracks, titles use bold emphasis, prices use a 600-level weight, and image/text/row spacing is tuned for a compact PLP rhythm. Homepage rails and STORE-005 media behavior remain on their existing shared-card rules.
 
 ## Visual UAT
 

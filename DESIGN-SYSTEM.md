@@ -92,7 +92,7 @@ Archive composition remains owned by classic WooCommerce hooks. `archive.php` is
 
 The filter contract is server-rendered and URL-addressable: category, native product brand, size, colour, price and availability are represented as GET values. `archive-filters.js` only coordinates drawer state, accordions and form serialization; it does not fetch or render products. Search and navigation close events are shared so the header and archive overlays preserve one-open-surface behavior.
 
-The archive PLP rhythm is scoped with `ssz-product-archive` so shared STORE-005 cards remain unchanged on homepage rails and PDP related loops. Archive cards keep the 4:5 media/brand/title/native-price hierarchy, use a restrained light-blue brand label, semibold two-line title and deliberate image/text/row spacing. No card swatches, logos, quick actions or new product-card architecture were added.
+The archive PLP rhythm is scoped with `ssz-product-archive` so shared STORE-005 cards remain unchanged on homepage rails and PDP related loops. Archive cards keep the 4:5 media/brand/title/native-price hierarchy, fill their WooCommerce grid tracks, use a restrained light-blue brand label, bold two-line title and 600-level price. Mobile archives use a narrow 12px column gutter and 24px row gap; image-to-brand, brand-to-title and title-to-price spacing stay compact. Sale-old pricing remains muted/struck through while sale-current pricing follows the 600-level price weight. No card swatches, logos, quick actions or new product-card architecture were added.
 
 ## Accessibility contract
 

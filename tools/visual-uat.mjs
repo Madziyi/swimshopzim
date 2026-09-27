@@ -260,16 +260,52 @@ const inspectArchivePage = async (page, expectedColumns) => {
       categoryNav: Boolean(document.querySelector('.ssz-archive-category-nav')),
       presentation: (() => {
         const card = document.querySelector('ul.products li.ssz-product-card');
+        const cards = [...document.querySelectorAll('ul.products li.ssz-product-card')];
         const media = card?.querySelector('.ssz-product-card__media');
         const brand = card?.querySelector('.ssz-product-card__brand');
         const title = card?.querySelector('.woocommerce-loop-product__title');
         const price = card?.querySelector('.price');
+        const saleCard = cards.find((item) => item.querySelector('.price del'));
+        const salePrice = saleCard?.querySelector('.price');
+        const saleCurrent = saleCard?.querySelector('.price ins');
+        const saleOld = saleCard?.querySelector('.price del');
+        const rect = (element) => element?.getBoundingClientRect();
+        const cardRect = rect(card);
+        const mediaRect = rect(media);
+        const firstRowTop = cardRect?.top ?? null;
+        const firstRow = firstRowTop === null ? [] : cards.filter((item) => Math.abs((rect(item)?.top ?? 0) - firstRowTop) < 2);
+        const secondRow = firstRowTop === null ? [] : cards.filter((item) => (rect(item)?.top ?? 0) > firstRowTop + 2);
+        const firstRowSorted = [...firstRow].sort((left, right) => (rect(left)?.left ?? 0) - (rect(right)?.left ?? 0));
+        const firstRowMedia = firstRowSorted.map((item) => rect(item.querySelector('.ssz-product-card__media'))).filter(Boolean);
+        const row1InfoBottom = firstRow.length ? Math.max(...firstRow.map((item) => rect(item.querySelector('.price'))?.bottom ?? rect(item)?.bottom ?? 0)) : null;
+        const row2MediaTop = secondRow.length ? Math.min(...secondRow.map((item) => rect(item.querySelector('.ssz-product-card__media'))?.top ?? Infinity)) : null;
+        const cardWidths = cards.map((item) => rect(item)?.width ?? 0).filter(Boolean);
+        const mediaWidths = cards.map((item) => rect(item.querySelector('.ssz-product-card__media'))?.width ?? 0).filter(Boolean);
+        const rowColumnGaps = firstRowSorted.slice(1).map((item, index) => (rect(item)?.left ?? 0) - (rect(firstRowSorted[index])?.right ?? 0));
         return {
           brandColor: brand ? getComputedStyle(brand).color : null,
           titleWeight: title ? getComputedStyle(title).fontWeight : null,
+          priceWeight: price ? getComputedStyle(price).fontWeight : null,
+          saleCurrentWeight: saleCurrent ? getComputedStyle(saleCurrent).fontWeight : null,
+          saleOldWeight: saleOld ? getComputedStyle(saleOld).fontWeight : null,
+          saleOldColor: saleOld ? getComputedStyle(saleOld).color : null,
+          saleOldDecoration: saleOld ? getComputedStyle(saleOld).textDecorationLine : null,
           brandMediaGap: media && brand ? Number((brand.getBoundingClientRect().top - media.getBoundingClientRect().bottom).toFixed(1)) : null,
+          brandTitleGap: brand && title ? Number((title.getBoundingClientRect().top - brand.getBoundingClientRect().bottom).toFixed(1)) : null,
           priceTitleGap: title && price ? Number((price.getBoundingClientRect().top - title.getBoundingClientRect().bottom).toFixed(1)) : null,
           rowGap: gridStyle ? gridStyle.rowGap : null,
+          cardCount: cards.length,
+          cardWidth: cardWidths[0] ?? null,
+          mediaWidth: mediaWidths[0] ?? null,
+          mediaCardRatio: cardWidths[0] && mediaWidths[0] ? Number((mediaWidths[0] / cardWidths[0]).toFixed(3)) : null,
+          minMediaCardRatio: cardWidths.length && mediaWidths.length ? Number(Math.min(...cards.map((item) => {
+            const itemCard = rect(item);
+            const itemMedia = rect(item.querySelector('.ssz-product-card__media'));
+            return itemCard?.width && itemMedia?.width ? itemMedia.width / itemCard.width : 0;
+          })).toFixed(3)) : null,
+          columnGap: rowColumnGaps.length ? Number(Math.min(...rowColumnGaps).toFixed(1)) : null,
+          rowInfoGap: row2MediaTop !== null && row1InfoBottom !== null ? Number((row2MediaTop - row1InfoBottom).toFixed(1)) : null,
+          rowMediaAlignment: firstRowMedia.length > 1 ? Number((Math.max(...firstRowMedia.map((item) => item.top)) - Math.min(...firstRowMedia.map((item) => item.top))).toFixed(1)) : null,
         };
       })(),
       brokenImages: images.length,
@@ -851,7 +887,7 @@ const failures = results.filter((result) => {
     !result.shop.productCards.onlyTwoImages || !result.shop.productCards.coverApparel || !result.shop.productCards.containEquipment || !result.shop.productCards.containEquipmentSourceUncropped || !result.shop.productCards.containSecondarySourceUncropped || !result.shop.productCards.saleState || !result.shop.productCards.soldOutState ||
     !result.shop.productCards.variablePrice || !result.shop.productCards.singleImageStable || !result.shop.productCards.noImageState || !result.shop.productCards.longTitleBounded || !result.shop.productCards.archiveColumns ||
     !result.shop.productCards.hover.checked || (result.width >= 768 && !result.shop.productCards.hover.changed) || !result.shop.productCards.hover.secondaryLoaded ||
-    !result.shop.archive.header || !result.shop.archive.toolbar || !result.shop.archive.count || !result.shop.archive.filterToggle || !result.shop.archive.ordering || !result.shop.archive.grid || result.shop.archive.horizontalOverflow || result.shop.archive.brokenImages || result.shop.archive.columnCount !== result.shop.archive.expectedColumns || result.shop.archive.presentation.brandColor !== 'rgb(35, 136, 173)' || result.shop.archive.presentation.titleWeight !== '600' || result.shop.archive.presentation.brandMediaGap < 14 || result.shop.archive.presentation.priceTitleGap < 8 ||
+    !result.shop.archive.header || !result.shop.archive.toolbar || !result.shop.archive.count || !result.shop.archive.filterToggle || !result.shop.archive.ordering || !result.shop.archive.grid || result.shop.archive.horizontalOverflow || result.shop.archive.brokenImages || result.shop.archive.columnCount !== result.shop.archive.expectedColumns || result.shop.archive.presentation.brandColor !== 'rgb(35, 136, 173)' || result.shop.archive.presentation.titleWeight !== '700' || result.shop.archive.presentation.priceWeight !== '600' || result.shop.archive.presentation.saleCurrentWeight !== '600' || result.shop.archive.presentation.saleOldWeight !== '500' || result.shop.archive.presentation.saleOldDecoration !== 'line-through' || result.shop.archive.presentation.brandMediaGap < 10 || result.shop.archive.presentation.brandMediaGap > 18 || result.shop.archive.presentation.brandTitleGap < 4 || result.shop.archive.presentation.brandTitleGap > 9 || result.shop.archive.presentation.priceTitleGap < 4 || result.shop.archive.presentation.priceTitleGap > 9 || (result.width <= 430 && (result.shop.archive.presentation.minMediaCardRatio < .97 || result.shop.archive.presentation.columnGap < 7 || result.shop.archive.presentation.columnGap > 16 || result.shop.archive.presentation.rowMediaAlignment > 2 || result.shop.archive.presentation.rowInfoGap < 0 || result.shop.archive.presentation.rowInfoGap > 50)) ||
     !result.shop.archive.drawer.opened || !result.shop.archive.drawer.bodyScrollLock || !result.shop.archive.drawer.focusInside || !result.shop.archive.drawer.closedByEscape || !result.shop.archive.drawer.focusRestored || (result.shop.archive.drawer.accordion.configured && (!result.shop.archive.drawer.accordion.expanded || !result.shop.archive.drawer.accordion.collapsed)) ||
     !result.pdp.themeVisible || result.pdp.responseStatus === null || result.pdp.responseStatus >= 400 || result.pdp.navigationError || result.pdp.horizontalOverflow || result.pdp.consoleErrors.length || result.pdp.pageErrors.length ||
     !result.pdp.product.mainFound || result.pdp.product.mainHasCardClass || result.pdp.product.mainHasFitClass || !result.pdp.product.relatedFound || !result.pdp.product.relatedCardContract ||
