@@ -74,6 +74,7 @@ For fresh-install fallback verification, use a disposable Local database or a te
 - The accessible drawer supports accordions, Escape, backdrop/button close, focus restoration, focus trapping and body scroll lock. Search and navigation close events prevent stacked overlays.
 - Local-only fixtures provide native Arena, Speedo and Spurt brands, approved category hierarchy, `pa_size` XS/S/M/L/XL, `pa_colour` Black/Navy/Blue/Red, distinct prices, stock states and distinct `total_sales` values. No fixture rows, uploads or database exports are committed.
 - Browser UAT passed at exact widths 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px for no overflow, no broken images, archive structure, 2/3/4 grid columns, drawer focus/scroll/Escape/accordion behavior, sorting, category/brand contexts, multi-filter submit, active chips, empty state and no console/page errors. A focused Local pagination pass with temporary `woocommerce_catalog_rows=1` rendered four products on pages 1 and 2, then restored the normal three-row setting.
+- Visual refinement keeps the existing media/card architecture while applying archive-only presentation rules: a light SwimShop blue brand line, semibold title weight, 4:5 image-to-copy breathing room, title-to-price spacing and larger responsive row gaps. Fine-pointer hover remains required at desktop widths; touch widths preserve the non-hover contract.
 
 ## Shop/category
 

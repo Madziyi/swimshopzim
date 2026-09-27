@@ -258,6 +258,20 @@ const inspectArchivePage = async (page, expectedColumns) => {
       columnCount,
       expectedColumns: expected,
       categoryNav: Boolean(document.querySelector('.ssz-archive-category-nav')),
+      presentation: (() => {
+        const card = document.querySelector('ul.products li.ssz-product-card');
+        const media = card?.querySelector('.ssz-product-card__media');
+        const brand = card?.querySelector('.ssz-product-card__brand');
+        const title = card?.querySelector('.woocommerce-loop-product__title');
+        const price = card?.querySelector('.price');
+        return {
+          brandColor: brand ? getComputedStyle(brand).color : null,
+          titleWeight: title ? getComputedStyle(title).fontWeight : null,
+          brandMediaGap: media && brand ? Number((brand.getBoundingClientRect().top - media.getBoundingClientRect().bottom).toFixed(1)) : null,
+          priceTitleGap: title && price ? Number((price.getBoundingClientRect().top - title.getBoundingClientRect().bottom).toFixed(1)) : null,
+          rowGap: gridStyle ? gridStyle.rowGap : null,
+        };
+      })(),
       brokenImages: images.length,
       horizontalOverflow: Math.max(root?.scrollWidth ?? 0, body?.scrollWidth ?? 0) > (root?.clientWidth ?? 0) + 2,
     };
@@ -836,8 +850,8 @@ const failures = results.filter((result) => {
     result.shop.consoleErrors.length || result.shop.pageErrors.length || !result.shop.productCards.cardContract || !result.shop.productCards.primaryImagesLoaded || !result.shop.productCards.secondaryImagesLoaded ||
     !result.shop.productCards.onlyTwoImages || !result.shop.productCards.coverApparel || !result.shop.productCards.containEquipment || !result.shop.productCards.containEquipmentSourceUncropped || !result.shop.productCards.containSecondarySourceUncropped || !result.shop.productCards.saleState || !result.shop.productCards.soldOutState ||
     !result.shop.productCards.variablePrice || !result.shop.productCards.singleImageStable || !result.shop.productCards.noImageState || !result.shop.productCards.longTitleBounded || !result.shop.productCards.archiveColumns ||
-    !result.shop.productCards.hover.checked || !result.shop.productCards.hover.changed || !result.shop.productCards.hover.secondaryLoaded ||
-    !result.shop.archive.header || !result.shop.archive.toolbar || !result.shop.archive.count || !result.shop.archive.filterToggle || !result.shop.archive.ordering || !result.shop.archive.grid || result.shop.archive.horizontalOverflow || result.shop.archive.brokenImages || result.shop.archive.columnCount !== result.shop.archive.expectedColumns ||
+    !result.shop.productCards.hover.checked || (result.width >= 768 && !result.shop.productCards.hover.changed) || !result.shop.productCards.hover.secondaryLoaded ||
+    !result.shop.archive.header || !result.shop.archive.toolbar || !result.shop.archive.count || !result.shop.archive.filterToggle || !result.shop.archive.ordering || !result.shop.archive.grid || result.shop.archive.horizontalOverflow || result.shop.archive.brokenImages || result.shop.archive.columnCount !== result.shop.archive.expectedColumns || result.shop.archive.presentation.brandColor !== 'rgb(35, 136, 173)' || result.shop.archive.presentation.titleWeight !== '600' || result.shop.archive.presentation.brandMediaGap < 14 || result.shop.archive.presentation.priceTitleGap < 8 ||
     !result.shop.archive.drawer.opened || !result.shop.archive.drawer.bodyScrollLock || !result.shop.archive.drawer.focusInside || !result.shop.archive.drawer.closedByEscape || !result.shop.archive.drawer.focusRestored || (result.shop.archive.drawer.accordion.configured && (!result.shop.archive.drawer.accordion.expanded || !result.shop.archive.drawer.accordion.collapsed)) ||
     !result.pdp.themeVisible || result.pdp.responseStatus === null || result.pdp.responseStatus >= 400 || result.pdp.navigationError || result.pdp.horizontalOverflow || result.pdp.consoleErrors.length || result.pdp.pageErrors.length ||
     !result.pdp.product.mainFound || result.pdp.product.mainHasCardClass || result.pdp.product.mainHasFitClass || !result.pdp.product.relatedFound || !result.pdp.product.relatedCardContract ||

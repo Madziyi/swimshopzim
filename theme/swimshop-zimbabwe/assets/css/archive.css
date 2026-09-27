@@ -17,6 +17,14 @@
 .ssz-archive-category-nav a { border: 1px solid var(--ssz-color-border, #d8dee5); border-radius: 999px; color: inherit; display: block; font-size: .875rem; padding: .6rem .9rem; text-decoration: none; }
 .ssz-archive-category-nav a:hover, .ssz-archive-category-nav a:focus-visible, .ssz-archive-category-nav a.is-current { background: var(--ssz-color-ink, #182331); border-color: var(--ssz-color-ink, #182331); color: #fff; }
 
+/* Archive-only PLP rhythm: product-card.css remains the source for media states. */
+.ssz-product-archive ul.products { row-gap: clamp(2.25rem, 4vw, 4rem); }
+.ssz-product-archive .ssz-product-card__media { margin-block-end: 1rem; }
+.ssz-product-archive .ssz-product-card__brand { margin-block: 0 .45rem; color: #2388ad; font-size: .74rem; font-weight: 700; letter-spacing: .13em; line-height: 1.2; }
+.ssz-product-archive ul.products li.product .ssz-product-card__brand + .woocommerce-loop-product__title,
+.ssz-product-archive ul.products li.product .woocommerce-loop-product__title { margin-block: 0; font-weight: 600; line-height: 1.32; }
+.ssz-product-archive ul.products li.product .price { margin-block: .65rem 0; font-size: .9rem; line-height: 1.35; }
+
 .ssz-archive-toolbar { align-items: center; display: flex; gap: 1rem; justify-content: space-between; margin-block-end: .85rem; }
 .ssz-archive-toolbar__count { color: var(--ssz-color-muted, #596675); font-size: .9rem; margin: 0; }
 .ssz-archive-toolbar__actions { align-items: center; display: flex; gap: .75rem; }

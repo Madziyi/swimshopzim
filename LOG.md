@@ -200,3 +200,14 @@ Functional archive UAT passed multi-group filter submit with `filter_product_bra
 HANDOFF
 STORE-006 implementation, verification and documentation are complete. Branch is ready for Sol review; STORE-007 has not started and no merge has been performed.
 
+## 2026-09-27 — STORE-006 visual refinement
+
+IMPLEMENTATION
+Applied Sol’s focused PLP presentation correction on the existing `luna/STORE-006-shop-category-pages` branch. Added an archive-only `ssz-product-archive` body scope and refined only the listing presentation: light SwimShop-blue brand line, semibold title weight, image-to-copy spacing, title-to-price spacing and responsive grid row rhythm. The existing 4:5 media frame, contain/cover behavior, hover secondary image, SALE/SOLD OUT badges, placeholder handling, filters, sorting, pagination and query contract remain unchanged. No card swatches, logos, quick actions or architecture rewrite was introduced.
+
+VERIFICATION
+Re-ran the complete ten-width visual UAT at 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px. Computed archive assertions passed for brand color `rgb(35, 136, 173)`, title weight `600`, 16px image-to-brand gap, 10.4px title-to-price gap and responsive row gap. Fine-pointer hover passed at desktop widths; mobile widths correctly preserved touch/non-hover behavior. Multi-filter submit, active chips, sorting/popularity, category archive, brand archive, empty state, drawer behavior, no overflow, no broken images and no console/page errors remained green. Homepage New Arrivals/Best Sellers and STORE-003 header/search/navigation regression checks passed.
+
+HANDOFF
+Visual revision is complete and ready for Sol review. The filter layout, archive query structure and all non-presentation STORE-006 architecture remain unchanged. STORE-007 has not started and no merge has been performed.
+

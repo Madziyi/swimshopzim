@@ -19,6 +19,21 @@ function ssz_is_product_archive() {
 }
 
 /**
+ * Add a stable body class for archive-only presentation refinements.
+ *
+ * @param string[] $classes Existing body classes.
+ * @return string[]
+ */
+function ssz_archive_body_class( $classes ) {
+	if ( ssz_is_product_archive() ) {
+		$classes[] = 'ssz-product-archive';
+	}
+
+	return $classes;
+}
+add_filter( 'body_class', 'ssz_archive_body_class' );
+
+/**
  * Return the current archive type.
  *
  * @return string
