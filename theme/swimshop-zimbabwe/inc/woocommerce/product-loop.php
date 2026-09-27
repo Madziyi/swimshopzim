@@ -71,21 +71,35 @@ function ssz_product_card_media_fit( $product ) {
 }
 
 /**
+ * Select an image source that matches the card media-fit strategy.
+ *
+ * Cover cards can use the theme's hard-cropped 4:5 derivative. Contain cards
+ * must use a non-cropped WordPress size so CSS can preserve the complete
+ * source image inside the same 4:5 frame.
+ *
+ * @param string $fit Media-fit strategy.
+ * @return string
+ */
+function ssz_product_card_image_size_for_fit( $fit ) {
+	return 'contain' === $fit ? 'large' : 'ssz-product-card';
+}
+
+/**
  * Add reusable card classes to WooCommerce product loop items.
  *
- * @param array $classes Existing post classes.
- * @param array $class   Additional post classes.
- * @param int   $post_id Product post ID.
+ * WooCommerce uses this filter for both loop items and the main single
+ * product wrapper, so the queried PDP product is explicitly excluded.
+ *
+ * @param array      $classes Existing product classes.
+ * @param WC_Product $product Product object.
  * @return array
  */
-function ssz_product_card_post_class( $classes, $class, $post_id ) {
-	if ( 'product' !== get_post_type( $post_id ) || ! function_exists( 'wc_get_product' ) ) {
+function ssz_product_card_post_class( $classes, $product ) {
+	if ( ! $product instanceof WC_Product ) {
 		return $classes;
 	}
 
-	$product = wc_get_product( $post_id );
-
-	if ( ! $product ) {
+	if ( is_product() && get_queried_object_id() === $product->get_id() ) {
 		return $classes;
 	}
 
@@ -94,7 +108,7 @@ function ssz_product_card_post_class( $classes, $class, $post_id ) {
 
 	return array_unique( $classes );
 }
-add_filter( 'post_class', 'ssz_product_card_post_class', 20, 3 );
+add_filter( 'woocommerce_post_class', 'ssz_product_card_post_class', 20, 2 );
 
 /**
  * Render the first brand as text above the native loop title.
@@ -138,6 +152,8 @@ function ssz_product_card_media() {
 	$image_id    = $product->get_image_id();
 	$gallery_ids = $product->get_gallery_image_ids();
 	$secondary   = ! empty( $gallery_ids ) ? (int) reset( $gallery_ids ) : 0;
+	$fit         = ssz_product_card_media_fit( $product );
+	$image_size  = ssz_product_card_image_size_for_fit( $fit );
 	$badge       = '';
 
 	if ( ! $product->is_in_stock() ) {
@@ -151,7 +167,7 @@ function ssz_product_card_media() {
 	if ( $image_id ) {
 		echo wp_get_attachment_image(
 			$image_id,
-			'ssz-product-card',
+			$image_size,
 			false,
 			array(
 				'class'    => 'ssz-product-card__image ssz-product-card__image--primary',
@@ -161,7 +177,7 @@ function ssz_product_card_media() {
 			)
 		); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	} else {
-		$placeholder = function_exists( 'wc_placeholder_img_src' ) ? wc_placeholder_img_src( 'ssz-product-card' ) : '';
+		$placeholder = function_exists( 'wc_placeholder_img_src' ) ? wc_placeholder_img_src( $image_size ) : '';
 
 		if ( $placeholder ) {
 			echo '<img class="ssz-product-card__image ssz-product-card__image--primary" src="' . esc_url( $placeholder ) . '" alt="' . esc_attr( $product_name ) . '" loading="lazy" decoding="async">';
@@ -171,7 +187,7 @@ function ssz_product_card_media() {
 	if ( $secondary ) {
 		echo wp_get_attachment_image(
 			$secondary,
-			'ssz-product-card',
+			$image_size,
 			false,
 			array(
 				'class'       => 'ssz-product-card__image ssz-product-card__image--secondary',

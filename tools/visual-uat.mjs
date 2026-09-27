@@ -116,8 +116,16 @@ const inspectProductCards = async (page, { homepage = false, expectedColumns = n
         aspectRatio: rect && rect.height ? Number((rect.width / rect.height).toFixed(3)) : null,
         primaryImage: Boolean(primary && primary.complete && primary.naturalWidth > 0),
         primaryAlt: primary?.getAttribute('alt') ?? null,
+        primarySource: primary?.currentSrc || primary?.getAttribute('src') || null,
+        primaryNaturalWidth: primary?.naturalWidth ?? 0,
+        primaryNaturalHeight: primary?.naturalHeight ?? 0,
+        primarySourceRatio: primary?.naturalHeight ? Number((primary.naturalWidth / primary.naturalHeight).toFixed(3)) : null,
         secondaryImage: Boolean(secondary),
         secondaryLoaded: Boolean(secondary && secondary.complete && secondary.naturalWidth > 0),
+        secondarySource: secondary?.currentSrc || secondary?.getAttribute('src') || null,
+        secondaryNaturalWidth: secondary?.naturalWidth ?? 0,
+        secondaryNaturalHeight: secondary?.naturalHeight ?? 0,
+        secondarySourceRatio: secondary?.naturalHeight ? Number((secondary.naturalWidth / secondary.naturalHeight).toFixed(3)) : null,
         imageCount: media?.querySelectorAll('img').length ?? 0,
         brand: card.querySelector('.ssz-product-card__brand')?.textContent?.trim() ?? null,
         title: Boolean(title),
@@ -174,6 +182,8 @@ const inspectProductCards = async (page, { homepage = false, expectedColumns = n
       onlyTwoImages: cardDetails.every((card) => card.imageCount <= 2),
       coverApparel: Boolean(simple?.fit === 'cover'),
       containEquipment: Boolean(equipment?.fit === 'contain'),
+      containEquipmentSourceUncropped: Boolean(equipment?.fit === 'contain' && equipment.primarySourceRatio > 1.5 && !/720x900/.test(equipment.primarySource ?? '')),
+      containSecondarySourceUncropped: Boolean(equipment?.fit === 'contain' && equipment.secondaryImage && equipment.secondarySourceRatio > 1.5 && !/720x900/.test(equipment.secondarySource ?? '')),
       saleState: Boolean(sale?.saleBadge && !sale?.soldOutBadge),
       soldOutState: Boolean(outOfStock?.soldOutBadge && !outOfStock?.saleBadge),
       variablePrice: Boolean(findCard('Variable Training Suit')?.price),
@@ -189,6 +199,44 @@ const inspectProductCards = async (page, { homepage = false, expectedColumns = n
 
   return { ...cardResult, hover };
 };
+
+const inspectProductPage = async (page) => page.evaluate(() => {
+  const mainProduct = document.querySelector('main#primary > .product[id^="product-"]');
+  const relatedCards = [...document.querySelectorAll('.related.products ul.products li.product')];
+  const relatedDetails = relatedCards.map((card) => {
+    const media = card.querySelector('.ssz-product-card__media');
+    const primary = card.querySelector('.ssz-product-card__image--primary');
+    const title = card.querySelector('.woocommerce-loop-product__title');
+    const price = card.querySelector('.price');
+    const rect = media?.getBoundingClientRect();
+    return {
+      cardClass: card.classList.contains('ssz-product-card'),
+      fitClass: card.classList.contains('ssz-product-card--cover') || card.classList.contains('ssz-product-card--contain'),
+      media: Boolean(media),
+      image: Boolean(primary && primary.complete && primary.naturalWidth > 0),
+      title: Boolean(title),
+      price: Boolean(price),
+      aspectRatio: rect && rect.height ? Number((rect.width / rect.height).toFixed(3)) : null,
+      anchorCount: card.querySelectorAll('a').length,
+      buttons: card.querySelectorAll('.add_to_cart_button, .ajax_add_to_cart, .button').length,
+      ratings: card.querySelectorAll('.star-rating, .woocommerce-loop-rating').length,
+    };
+  });
+
+  return {
+    mainFound: Boolean(mainProduct),
+    mainHasCardClass: Boolean(mainProduct?.classList.contains('ssz-product-card')),
+    mainHasFitClass: Boolean(mainProduct && [...mainProduct.classList].some((className) => className === 'ssz-product-card--cover' || className === 'ssz-product-card--contain')),
+    relatedFound: Boolean(document.querySelector('.related.products')),
+    relatedCount: relatedCards.length,
+    relatedDetails,
+    relatedCardContract: relatedCards.length > 0 && relatedDetails.every((card) => (
+      card.cardClass && card.fitClass && card.media && card.image && card.title && card.price &&
+      card.aspectRatio !== null && Math.abs(card.aspectRatio - .8) < .03 && card.anchorCount === 1 &&
+      card.buttons === 0 && card.ratings === 0
+    )),
+  };
+});
 
 const browser = await chromium.launch({ headless: true, executablePath });
 const results = [];
@@ -386,6 +434,32 @@ try {
     const shopColumns = width < 768 ? 2 : width <= 1024 ? 3 : 4;
     const shopProductCards = await inspectProductCards(shopPage, { expectedColumns: shopColumns });
     await shopPage.close();
+
+    const pdpPage = await context.newPage();
+    const pdpConsoleErrors = [];
+    const pdpPageErrors = [];
+    pdpPage.on('console', (message) => {
+      if (message.type() === 'error') pdpConsoleErrors.push(message.text());
+    });
+    pdpPage.on('pageerror', (error) => pdpPageErrors.push(error.message));
+    let pdpResponse;
+    let pdpNavigationError = null;
+    try {
+      pdpResponse = await pdpPage.goto(new URL('product/store-005-test-simple-performance-suit/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+    } catch (error) {
+      pdpNavigationError = error.message;
+    }
+    const pdpState = await pdpPage.evaluate(() => {
+      const root = document.documentElement;
+      const body = document.body;
+      return {
+        clientWidth: root?.clientWidth ?? 0,
+        scrollWidth: Math.max(root?.scrollWidth ?? 0, body?.scrollWidth ?? 0),
+        themeVisible: Boolean(document.querySelector('.ssz-site-shell, .ssz-header[data-site-header]')),
+      };
+    });
+    const pdpProduct = await inspectProductPage(pdpPage);
+    await pdpPage.close();
     const search = { opened: false, inputFocused: false, closed: false, focusRestored: false, menuCloses: true };
     const searchToggle = page.locator('[data-search-toggle]');
     const searchPanel = page.locator('[data-search-panel]');
@@ -557,6 +631,15 @@ try {
         pageErrors: shopPageErrors,
         productCards: shopProductCards,
       },
+      pdp: {
+        responseStatus: pdpResponse?.status() ?? null,
+        navigationError: pdpNavigationError,
+        themeVisible: pdpState.themeVisible,
+        horizontalOverflow: pdpState.scrollWidth > pdpState.clientWidth + 2,
+        consoleErrors: pdpConsoleErrors,
+        pageErrors: pdpPageErrors,
+        product: pdpProduct,
+      },
       search,
       menuState,
       desktop,
@@ -612,15 +695,17 @@ const failures = results.filter((result) => {
     result.homepage.featurePanels !== 2 || !result.homepage.featureLinks || !result.homepage.proposition || !result.homepage.newsletter ||
     !result.homepage.newsletterHonest || result.homepage.newsletterForbiddenLabels.length || !result.homepage.sectionOrder || result.homepage.forbiddenLabels.length || result.homepage.brokenImages ||
     !result.homepageProductCards.cardContract || !result.homepageProductCards.primaryImagesLoaded || !result.homepageProductCards.secondaryImagesLoaded || !result.homepageProductCards.onlyTwoImages ||
-    !result.homepageProductCards.coverApparel || !result.homepageProductCards.containEquipment || !result.homepageProductCards.saleState || !result.homepageProductCards.soldOutState ||
+    !result.homepageProductCards.coverApparel || !result.homepageProductCards.containEquipment || !result.homepageProductCards.containEquipmentSourceUncropped || !result.homepageProductCards.containSecondarySourceUncropped || !result.homepageProductCards.saleState || !result.homepageProductCards.soldOutState ||
     !result.homepageProductCards.variablePrice || !result.homepageProductCards.singleImageStable || !result.homepageProductCards.noImageState || !result.homepageProductCards.longTitleBounded ||
     !result.homepageProductCards.hover.checked || !result.homepageProductCards.hover.changed || !result.homepageProductCards.hover.secondaryLoaded ||
     (result.width <= 767 && !result.homepageProductCards.homepageRail) ||
     !result.shop.themeVisible || result.shop.responseStatus === null || result.shop.responseStatus >= 400 || result.shop.navigationError || result.shop.horizontalOverflow || result.shop.duplicateIds.length ||
     result.shop.consoleErrors.length || result.shop.pageErrors.length || !result.shop.productCards.cardContract || !result.shop.productCards.primaryImagesLoaded || !result.shop.productCards.secondaryImagesLoaded ||
-    !result.shop.productCards.onlyTwoImages || !result.shop.productCards.coverApparel || !result.shop.productCards.containEquipment || !result.shop.productCards.saleState || !result.shop.productCards.soldOutState ||
+    !result.shop.productCards.onlyTwoImages || !result.shop.productCards.coverApparel || !result.shop.productCards.containEquipment || !result.shop.productCards.containEquipmentSourceUncropped || !result.shop.productCards.containSecondarySourceUncropped || !result.shop.productCards.saleState || !result.shop.productCards.soldOutState ||
     !result.shop.productCards.variablePrice || !result.shop.productCards.singleImageStable || !result.shop.productCards.noImageState || !result.shop.productCards.longTitleBounded || !result.shop.productCards.archiveColumns ||
     !result.shop.productCards.hover.checked || !result.shop.productCards.hover.changed || !result.shop.productCards.hover.secondaryLoaded ||
+    !result.pdp.themeVisible || result.pdp.responseStatus === null || result.pdp.responseStatus >= 400 || result.pdp.navigationError || result.pdp.horizontalOverflow || result.pdp.consoleErrors.length || result.pdp.pageErrors.length ||
+    !result.pdp.product.mainFound || result.pdp.product.mainHasCardClass || result.pdp.product.mainHasFitClass || !result.pdp.product.relatedFound || !result.pdp.product.relatedCardContract ||
     !result.headerMode.colorLogoVisible || !result.headerMode.colorLogoLoaded || !result.headerMode.cartVisible ||
     !result.search.opened || !result.search.inputFocused || !result.search.closed || !result.search.focusRestored ||
     mobileFailure || desktopFailure || missingConfiguredMenu ||

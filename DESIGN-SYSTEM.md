@@ -82,7 +82,7 @@ Product cards are reusable across homepage product rails, WooCommerce shop/categ
 
 `assets/css/product-card.css` owns card media, first-gallery-image hover, badges, brand/title/price treatment and responsive card behavior. `assets/css/woocommerce.css` remains responsible for archive grid structure and general WooCommerce/PDP/form styling.
 
-The first gallery image is the only alternate image and is revealed only for fine-pointer hover, with reduced-motion support. Apparel uses cover by default; known equipment/accessory category families use contain through the `ssz_product_card_media_fit` helper/filter while retaining the same 4:5 frame. Card badges are limited to SALE and SOLD OUT. Loop ratings and add-to-cart controls are removed through WooCommerce hooks; quick-add, wishlist, quick-view and swatches are intentionally out of scope.
+The first gallery image is the only alternate image and is revealed only for fine-pointer hover, with reduced-motion support. Apparel uses cover by default; known equipment/accessory category families use contain through the `ssz_product_card_media_fit` helper/filter while retaining the same 4:5 frame. Cover may use the hard-cropped 4:5 card derivative, but contain uses uncropped responsive media for both primary and first-gallery images. Card classes are scoped to normal WooCommerce loops; the queried main PDP product is excluded. Card badges are limited to SALE and SOLD OUT. Loop ratings and add-to-cart controls are removed through WooCommerce hooks; quick-add, wishlist, quick-view and swatches are intentionally out of scope.
 
 ## Accessibility contract
 

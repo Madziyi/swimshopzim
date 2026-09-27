@@ -54,14 +54,16 @@ For fresh-install fallback verification, use a disposable Local database or a te
 - Product cards use the native WooCommerce product link/title/price structure with a theme-owned 4:5 media wrapper.
 - The hierarchy is media, brand text, product title and native WooCommerce price; cards do not require a surrounding white box or large shadow.
 - Featured media uses responsive WordPress image markup and a safe WooCommerce placeholder when no featured image exists.
+- Cover cards may use the hard-cropped `ssz-product-card` derivative; contain cards must use an uncropped responsive WordPress source such as `large` for both primary and first-gallery images, preserving the complete object inside the 4:5 frame.
 - The first gallery image is the only alternate image. Fine-pointer hover swaps it with a 200ms transition; touch devices do not depend on hover, and reduced motion removes the transition.
 - Apparel defaults to `ssz-product-card--cover`; equipment/accessory category families use `ssz-product-card--contain`. The `ssz_product_card_media_fit` filter can override the fit.
 - The only visible card badges are `SALE` and `SOLD OUT`; sold-out products do not also show `SALE`.
 - Product Brands remain native `product_brand` terms and display as first-brand text, not logos or nested links.
 - Titles remain semantic and are visually bounded to approximately two lines; native WooCommerce price HTML supports normal, sale, variable and currency-configured output.
 - Loop cards contain no ratings, add-to-cart/quick-add controls, wishlist, quick-view or swatches, and sold-out cards remain clickable.
+- The main single-product wrapper never receives `ssz-product-card`, `ssz-product-card--cover` or `ssz-product-card--contain`; related and other normal WooCommerce product loops continue to receive the card classes.
 - Empty SKU fields do not alter the UI.
-- STORE-005 automated card UAT covers homepage New Arrivals/Best Sellers and shop/archive grids at all ten required widths, including card contract, hover, badges, media fit, placeholder, long title, no nested anchors, no overflow and no runtime errors. Local browser verification also covers the Arena, Speedo and Spurt brand archives and a related-product loop.
+- STORE-005 automated card UAT covers homepage New Arrivals/Best Sellers, shop/archive grids and a fixture PDP at all ten required widths, including card contract, hover, uncropped contain sources, badges, media fit, placeholder, long title, PDP root scope, related-loop classes, no nested anchors, no overflow and no runtime errors. Local browser verification also covers the Arena, Speedo and Spurt brand archives.
 
 ## Shop/category
 
