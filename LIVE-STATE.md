@@ -13,6 +13,7 @@
 - Active theme: Yes — browser rendered the SwimShop Zimbabwe homepage and custom `ssz-*` storefront shell
 - WooCommerce: Yes — WooCommerce 11.1.2 is present, and the live theme resolves WooCommerce cart/account/shop URLs
 - Browser opened: Yes — homepage, search results and footer loaded at the local domain
+- STORE-004 runtime check: the synced homepage renders with all ten sections, no horizontal overflow, no broken images and no console/page errors at the required browser widths. Local brand terms currently have no uploaded term logos, so the homepage exercises the accessible text fallback.
 
 ## HOSTINGER STAGING
 
