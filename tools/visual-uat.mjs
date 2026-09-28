@@ -353,14 +353,24 @@ const inspectProductCards = async (page, { homepage = false, expectedColumns = n
   return { ...cardResult, hover, swatchInteraction };
 };
 
-const inspectProductPage = async (page) => page.evaluate(() => {
+const inspectProductPage = async (page) => {
+  const relatedCardsForLoad = page.locator('.related.products ul.products li.product');
+  for (let index = 0; index < await relatedCardsForLoad.count(); index += 1) {
+    await relatedCardsForLoad.nth(index).scrollIntoViewIfNeeded();
+  }
+  await page.waitForTimeout(180);
+  return page.evaluate(() => {
   const mainProduct = document.querySelector('main#primary > .product[id^="product-"]');
+  const gallery = document.querySelector('.woocommerce-product-gallery');
+  const galleryWrapper = document.querySelector('.woocommerce-product-gallery__wrapper');
+  const summary = document.querySelector('main#primary > .product .summary');
+  const price = document.querySelector('[data-ssz-product-price]');
   const relatedCards = [...document.querySelectorAll('.related.products ul.products li.product')];
   const relatedDetails = relatedCards.map((card) => {
     const media = card.querySelector('.ssz-product-card__media');
     const primary = card.querySelector('.ssz-product-card__image--primary');
     const title = card.querySelector('.woocommerce-loop-product__title');
-    const price = card.querySelector('.price');
+    const cardPrice = card.querySelector('.price');
     const rect = media?.getBoundingClientRect();
     return {
       cardClass: card.classList.contains('ssz-product-card'),
@@ -368,13 +378,13 @@ const inspectProductPage = async (page) => page.evaluate(() => {
       media: Boolean(media),
       image: Boolean(primary && primary.complete && primary.naturalWidth > 0),
       title: Boolean(title),
-      price: Boolean(price),
+      price: Boolean(cardPrice),
       aspectRatio: rect && rect.height ? Number((rect.width / rect.height).toFixed(3)) : null,
       anchorCount: card.querySelectorAll('a').length,
       retailPresentation: card.classList.contains('ssz-product-card--retail'),
       brandColor: card.querySelector('.ssz-product-card__brand') ? getComputedStyle(card.querySelector('.ssz-product-card__brand')).color : null,
       titleWeight: title ? getComputedStyle(title).fontWeight : null,
-      priceWeight: price ? getComputedStyle(price).fontWeight : null,
+      priceWeight: cardPrice ? getComputedStyle(cardPrice).fontWeight : null,
       swatchCount: card.querySelectorAll('.ssz-product-card__swatch').length,
       previewSwatchCount: card.querySelectorAll('[data-ssz-colour-swatch]').length,
       availableSwatchCount: card.querySelectorAll('[data-ssz-colour-available]').length,
@@ -385,11 +395,39 @@ const inspectProductPage = async (page) => page.evaluate(() => {
       ratings: card.querySelectorAll('.star-rating, .woocommerce-loop-rating').length,
     };
   });
+  const imageNodes = gallery ? [...gallery.querySelectorAll('.woocommerce-product-gallery__image img:not(.zoomImg)')] : [];
+  const details = [...document.querySelectorAll('.ssz-product-accordion')];
 
   return {
     mainFound: Boolean(mainProduct),
     mainHasCardClass: Boolean(mainProduct?.classList.contains('ssz-product-card')),
     mainHasFitClass: Boolean(mainProduct && [...mainProduct.classList].some((className) => className === 'ssz-product-card--cover' || className === 'ssz-product-card--contain')),
+    breadcrumb: Boolean(document.querySelector('.woocommerce-breadcrumb')),
+    galleryFound: Boolean(gallery),
+    galleryImageCount: imageNodes.length,
+    galleryPrimaryImageLoaded: Boolean(imageNodes[0] && imageNodes[0].complete && imageNodes[0].naturalWidth > 0),
+    galleryImagesHaveAlt: imageNodes.length > 0 && imageNodes.every((image) => Boolean(image.getAttribute('alt')?.trim())),
+    galleryLinks: gallery ? gallery.querySelectorAll('.woocommerce-product-gallery__image > a[href]').length : 0,
+    galleryUsesGrid: Boolean(galleryWrapper && getComputedStyle(galleryWrapper).display === 'grid'),
+    galleryUsesScrollSnap: Boolean(galleryWrapper && getComputedStyle(galleryWrapper).scrollSnapType.includes('x')),
+    galleryHasFlexViewport: Boolean(gallery?.querySelector('.flex-viewport')),
+    galleryTransform: galleryWrapper ? getComputedStyle(galleryWrapper).transform : null,
+    summaryFound: Boolean(summary),
+    brand: Boolean(summary?.querySelector('.ssz-single-brand a, .ssz-single-brand')),
+    brandColor: summary?.querySelector('.ssz-single-brand') ? getComputedStyle(summary.querySelector('.ssz-single-brand')).color : null,
+    titleCount: document.querySelectorAll('main#primary h1.product_title').length,
+    price: Boolean(price && price.querySelector('.woocommerce-Price-amount')),
+    priceText: price?.textContent?.trim() ?? '',
+    addToBag: document.querySelector('.single_add_to_cart_button')?.textContent?.trim() === 'Add to bag',
+    nativeColour: Boolean(document.querySelector('form.variations_form select[name="attribute_pa_colour"]')),
+    nativeSize: Boolean(document.querySelector('form.variations_form select[name="attribute_pa_size"]')),
+    colourControl: Boolean(document.querySelector('[data-ssz-attribute="attribute_pa_colour"]')),
+    sizeControl: Boolean(document.querySelector('[data-ssz-attribute="attribute_pa_size"]')),
+    details: details.map((detail) => detail.querySelector('summary')?.textContent?.trim() ?? ''),
+    hasDefaultTabs: Boolean(document.querySelector('.woocommerce-tabs, .wc-tabs-wrapper')),
+    hasDefaultExcerpt: Boolean(document.querySelector('.woocommerce-product-details__short-description')),
+    hasDefaultMeta: Boolean(document.querySelector('.product_meta')),
+    hasMaterialCare: [...document.querySelectorAll('summary,h2,h3')].some((element) => /material|care/i.test(element.textContent ?? '')),
     relatedFound: Boolean(document.querySelector('.related.products')),
     relatedCount: relatedCards.length,
     relatedDetails,
@@ -398,12 +436,67 @@ const inspectProductPage = async (page) => page.evaluate(() => {
       card.aspectRatio !== null && Math.abs(card.aspectRatio - .8) < .03 && card.anchorCount === 1 &&
       card.buttons === 0 && card.ratings === 0
     )),
-      relatedRetailPresentation: relatedCards.length > 0 && relatedDetails.every((card) => (
-        card.retailPresentation && card.brandColor === 'rgb(35, 136, 173)' && card.titleWeight === '700' && card.priceWeight === '600'
-      )),
-      relatedSwatchContract: relatedDetails.every((card) => card.swatchButtonsInLink === 0 && (card.swatchCount === 0 || (card.swatchCount <= 5 && card.swatchGroup))),
+    relatedRetailPresentation: relatedCards.length > 0 && relatedDetails.every((card) => (
+      card.retailPresentation && card.brandColor === 'rgb(35, 136, 173)' && card.titleWeight === '700' && card.priceWeight === '600'
+    )),
+    relatedSwatchContract: relatedDetails.every((card) => card.swatchButtonsInLink === 0 && (card.swatchCount === 0 || (card.swatchCount <= 5 && card.swatchGroup))),
   };
-});
+  });
+};
+
+const inspectProductPageInteractions = async (page) => {
+  const result = {
+    initialRange: false,
+    initialDisabled: false,
+    colourSync: false,
+    colourName: false,
+    sizeSync: false,
+    asymmetricDisabled: false,
+    disabledCannotActivate: false,
+    variationFound: false,
+    variationPrice: false,
+    variationImage: false,
+    resetSync: false,
+    sizeGuide: false,
+    shippingReturns: false,
+    accordionsKeyboard: false,
+  };
+
+  const state = page.locator('form.variations_form');
+  if (!(await state.count())) return result;
+
+  result.initialRange = (await page.locator('[data-ssz-product-price]').innerText()).includes('$89.00') && (await page.locator('[data-ssz-product-price]').innerText()).includes('$109.00');
+  result.initialDisabled = await page.locator('.woocommerce-variation-add-to-cart-disabled').count() === 1;
+  result.sizeGuide = await page.getByRole('link', { name: 'Size guide', exact: true }).count() === 1 && (await page.getByRole('link', { name: 'Size guide', exact: true }).getAttribute('href'))?.includes('store-007-test-size-guide');
+  result.shippingReturns = await page.getByText('Shipping & returns', { exact: true }).count() === 1;
+
+  const colour = page.getByRole('button', { name: 'Colour: Black', exact: true });
+  const size = page.getByRole('button', { name: 'Size: M', exact: true });
+  await colour.press('Enter');
+  await page.waitForTimeout(180);
+  result.colourSync = await page.locator('select[name="attribute_pa_colour"]').getAttribute('value') === 'black' || await page.locator('select[name="attribute_pa_colour"]').evaluate((select) => select.value === 'black');
+  result.colourName = (await page.locator('[data-ssz-attribute="attribute_pa_colour"] [data-ssz-selected-label]').textContent()).includes('Black');
+  result.asymmetricDisabled = await page.getByRole('button', { name: 'Size: XL', exact: true }).isEnabled() === false;
+  await size.press('Enter');
+  await page.waitForTimeout(650);
+  result.sizeSync = await page.locator('select[name="attribute_pa_size"]').evaluate((select) => select.value === 'm');
+  result.variationFound = await page.locator('.variation_id').inputValue().catch(() => '') !== '';
+  result.variationPrice = (await page.locator('[data-ssz-product-price]').innerText()).includes('$89.00') && !(await page.locator('[data-ssz-product-price]').innerText()).includes('$109.00');
+  const disabledSize = page.getByRole('button', { name: 'Size: XL', exact: true });
+  result.disabledCannotActivate = !(await disabledSize.isEnabled());
+  await page.getByRole('button', { name: 'Colour: Navy', exact: true }).press('Enter');
+  await page.waitForTimeout(650);
+  result.variationImage = await page.locator('.woocommerce-product-gallery__image img').first().getAttribute('src') && (await page.locator('.woocommerce-product-gallery__image img').first().getAttribute('src')).includes('simple-primary');
+
+  await page.locator('.reset_variations').click();
+  await page.waitForTimeout(300);
+  result.resetSync = await page.locator('select[name="attribute_pa_colour"]').evaluate((select) => select.value === '') && await page.locator('select[name="attribute_pa_size"]').evaluate((select) => select.value === '') && await page.locator('[data-ssz-product-price]').innerText().then((text) => text.includes('$89.00') && text.includes('$109.00')) && await page.locator('[data-ssz-variation-control] button[aria-pressed="true"]').count() === 0;
+
+  const productDetails = page.getByText('Product details', { exact: true });
+  await productDetails.press('Enter');
+  result.accordionsKeyboard = await page.locator('details').filter({ hasText: 'Product details' }).getAttribute('open') !== null;
+  return result;
+};
 
 const inspectRelatedSwatchInteraction = async (page) => {
   const cards = page.locator('.related.products ul.products li.ssz-product-card');
@@ -777,7 +870,7 @@ try {
     let pdpResponse;
     let pdpNavigationError = null;
     try {
-      pdpResponse = await pdpPage.goto(new URL('product/store-005-test-simple-performance-suit/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+      pdpResponse = await pdpPage.goto(new URL('product/store-007-test-variable-product-page/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
     } catch (error) {
       pdpNavigationError = error.message;
     }
@@ -791,6 +884,7 @@ try {
       };
     });
     const pdpProduct = await inspectProductPage(pdpPage);
+    const pdpInteractions = await inspectProductPageInteractions(pdpPage);
     const relatedSwatchInteraction = await inspectRelatedSwatchInteraction(pdpPage);
     await pdpPage.close();
     const search = { opened: false, inputFocused: false, closed: false, focusRestored: false, menuCloses: true };
@@ -973,6 +1067,7 @@ try {
         consoleErrors: pdpConsoleErrors,
         pageErrors: pdpPageErrors,
         product: pdpProduct,
+        interactions: pdpInteractions,
         relatedSwatchInteraction,
       },
       search,
@@ -1112,6 +1207,7 @@ if (process.env.SSZ_UAT_SUMMARY_ONLY === '1') {
     },
     pdp: {
       product: result.pdp.product,
+      interactions: result.pdp.interactions,
       relatedSwatchInteraction: result.pdp.relatedSwatchInteraction,
     },
   })), null, 2));
@@ -1172,7 +1268,7 @@ const failures = results.filter((result) => {
     !result.shop.archive.header || !result.shop.archive.toolbar || !result.shop.archive.count || !result.shop.archive.filterToggle || !result.shop.archive.ordering || !result.shop.archive.grid || result.shop.archive.horizontalOverflow || result.shop.archive.brokenImages || result.shop.archive.columnCount !== result.shop.archive.expectedColumns || result.shop.archive.presentation.brandColor !== 'rgb(35, 136, 173)' || result.shop.archive.presentation.titleWeight !== '700' || result.shop.archive.presentation.priceWeight !== '600' || result.shop.archive.presentation.saleCurrentWeight !== '600' || result.shop.archive.presentation.saleOldWeight !== '500' || result.shop.archive.presentation.saleOldDecoration !== 'line-through' || result.shop.archive.presentation.brandMediaGap < 10 || result.shop.archive.presentation.brandMediaGap > 18 || result.shop.archive.presentation.brandTitleGap < 4 || result.shop.archive.presentation.brandTitleGap > 9 || result.shop.archive.presentation.swatchTitleGap < 4 || result.shop.archive.presentation.swatchTitleGap > 10 || result.shop.archive.presentation.swatchPriceGap < 4 || result.shop.archive.presentation.swatchPriceGap > 10 || (result.width <= 430 && (result.shop.archive.presentation.minMediaCardRatio < .97 || result.shop.archive.presentation.columnGap < 7 || result.shop.archive.presentation.columnGap > 16 || result.shop.archive.presentation.rowMediaAlignment > 2 || result.shop.archive.presentation.rowInfoGap < 0 || result.shop.archive.presentation.rowInfoGap > 50)) ||
     !result.shop.archive.drawer.opened || !result.shop.archive.drawer.bodyScrollLock || !result.shop.archive.drawer.focusInside || !result.shop.archive.drawer.closedByEscape || !result.shop.archive.drawer.focusRestored || (result.shop.archive.drawer.accordion.configured && (!result.shop.archive.drawer.accordion.expanded || !result.shop.archive.drawer.accordion.collapsed)) ||
     !result.pdp.themeVisible || result.pdp.responseStatus === null || result.pdp.responseStatus >= 400 || result.pdp.navigationError || result.pdp.horizontalOverflow || result.pdp.consoleErrors.length || result.pdp.pageErrors.length ||
-    !result.pdp.product.mainFound || result.pdp.product.mainHasCardClass || result.pdp.product.mainHasFitClass || !result.pdp.product.relatedFound || !result.pdp.product.relatedCardContract || !result.pdp.product.relatedRetailPresentation || !result.pdp.product.relatedSwatchContract || !result.pdp.relatedSwatchInteraction.configured || !result.pdp.relatedSwatchInteraction.semanticContract || (!result.pdp.relatedSwatchInteraction.selected && !result.pdp.relatedSwatchInteraction.availableOnlySafe) || !result.pdp.relatedSwatchInteraction.noNavigation || !result.pdp.relatedSwatchInteraction.noNestedInteractive ||
+    !result.pdp.product.mainFound || result.pdp.product.mainHasCardClass || result.pdp.product.mainHasFitClass || !result.pdp.product.breadcrumb || !result.pdp.product.galleryFound || result.pdp.product.galleryImageCount < 1 || !result.pdp.product.galleryPrimaryImageLoaded || !result.pdp.product.galleryImagesHaveAlt || result.pdp.product.galleryLinks < 1 || (result.width >= 1121 && !result.pdp.product.galleryUsesGrid) || (result.width <= 767 && !result.pdp.product.galleryUsesScrollSnap) || result.pdp.product.galleryHasFlexViewport || result.pdp.product.galleryTransform !== 'none' || !result.pdp.product.summaryFound || !result.pdp.product.brand || result.pdp.product.brandColor !== 'rgb(35, 136, 173)' || result.pdp.product.titleCount !== 1 || !result.pdp.product.price || !result.pdp.product.addToBag || !result.pdp.product.nativeColour || !result.pdp.product.nativeSize || !result.pdp.product.colourControl || !result.pdp.product.sizeControl || result.pdp.product.details.length !== 2 || result.pdp.product.details.includes('Material & care') || result.pdp.product.hasDefaultTabs || result.pdp.product.hasDefaultExcerpt || result.pdp.product.hasDefaultMeta || result.pdp.product.hasMaterialCare || !result.pdp.product.relatedFound || !result.pdp.product.relatedCardContract || !result.pdp.product.relatedRetailPresentation || !result.pdp.product.relatedSwatchContract || !result.pdp.interactions.initialRange || !result.pdp.interactions.initialDisabled || !result.pdp.interactions.colourSync || !result.pdp.interactions.colourName || !result.pdp.interactions.sizeSync || !result.pdp.interactions.asymmetricDisabled || !result.pdp.interactions.disabledCannotActivate || !result.pdp.interactions.variationFound || !result.pdp.interactions.variationPrice || !result.pdp.interactions.variationImage || !result.pdp.interactions.resetSync || !result.pdp.interactions.sizeGuide || !result.pdp.interactions.shippingReturns || !result.pdp.interactions.accordionsKeyboard || !result.pdp.relatedSwatchInteraction.configured || !result.pdp.relatedSwatchInteraction.semanticContract || (!result.pdp.relatedSwatchInteraction.selected && !result.pdp.relatedSwatchInteraction.availableOnlySafe) || !result.pdp.relatedSwatchInteraction.noNavigation || !result.pdp.relatedSwatchInteraction.noNestedInteractive ||
     !result.headerMode.colorLogoVisible || !result.headerMode.colorLogoLoaded || !result.headerMode.cartVisible ||
     !result.search.opened || !result.search.inputFocused || !result.search.closed || !result.search.focusRestored ||
     mobileFailure || desktopFailure || missingConfiguredMenu ||

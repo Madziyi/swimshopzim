@@ -402,32 +402,3 @@ function ssz_configure_product_loop() {
 	add_action( 'woocommerce_after_shop_loop_item', 'ssz_close_product_link_after_item', 5 );
 }
 add_action( 'init', 'ssz_configure_product_loop', 20 );
-
-function ssz_single_brand() {
-	global $product;
-
-	if ( ! $product || ! taxonomy_exists( 'product_brand' ) ) {
-		return;
-	}
-
-	$brands = get_the_terms( $product->get_id(), 'product_brand' );
-
-	if ( empty( $brands ) || is_wp_error( $brands ) ) {
-		return;
-	}
-
-	$links = array();
-
-	foreach ( $brands as $brand ) {
-		$link = get_term_link( $brand );
-
-		if ( ! is_wp_error( $link ) ) {
-			$links[] = sprintf( '<a href="%1$s">%2$s</a>', esc_url( $link ), esc_html( $brand->name ) );
-		}
-	}
-
-	if ( $links ) {
-		echo '<div class="ssz-single-brand">' . wp_kses_post( implode( ', ', $links ) ) . '</div>';
-	}
-}
-add_action( 'woocommerce_single_product_summary', 'ssz_single_brand', 4 );

@@ -94,6 +94,14 @@ The filter contract is server-rendered and URL-addressable: category, native pro
 
 The archive PLP rhythm is scoped with `ssz-product-archive` and the reusable retail class so shared STORE-005 homepage cards remain unchanged while related products match the archive presentation. Archive and related cards keep the 4:5 media/brand/title/colour-preview/native-price hierarchy, fill their WooCommerce grid tracks, use a restrained light-blue brand label, bold two-line title and 600-level price. Mobile archives use a narrow 12px column gutter and 24px row gap; image-to-brand, brand-to-title, title-to-swatches and swatches-to-price spacing stay compact. Assigned global `pa_colour` terms render up to five swatch items plus `+N`; only terms with trustworthy variation-image mappings are focusable `Preview …` buttons, while unmapped terms are non-interactive `Available in …` indicators. Sale-old pricing remains muted/struck through while sale-current pricing follows the 600-level price weight. The main PDP variation controls are unchanged.
 
+## STORE-007 product page
+
+The PDP remains classic WooCommerce markup enhanced through hooks. `product-page.css` owns the product shell, native gallery presentation, sticky summary, purchase controls, stock and accordions; `product-card.css` continues to own all card internals. The desktop gallery is a two-column image grid above 1120px, a one-column image stack beside the summary at tablet widths, and a horizontal scroll-snap strip below 768px. Gallery image links, zoom and lightbox stay native; FlexSlider is intentionally disabled on single-product pages to avoid transform conflicts.
+
+The purchase panel uses native `product_brand`, native price HTML, WooCommerce availability and quantity behavior, and customer-facing `Add to bag` copy. `pa_colour` and `pa_size` receive button controls only after JavaScript enhancement; the underlying native selects remain the commerce source of truth and mirror WooCommerce availability. Variation price and image updates are taken from WooCommerce events/data rather than recalculated by the theme. Product Details and the optional Shipping & Returns content use native `<details>/<summary>`. There is deliberately no Material & Care section, wishlist, compare, quick buy, fake delivery promise or gallery library.
+
+Global PDP policy content is configured through the `SwimShop Product Page` Customizer section using sanitized page IDs: `Size Guide Page` renders a normal link only when configured, and `Shipping & Returns Page` renders an accordion only when configured.
+
 ## Accessibility contract
 
 Visible `:focus-visible` treatment, readable base sizing, usable control heights, semantic HTML compatibility and reduced motion are preserved. The existing skip link is unchanged. Full accessibility auditing remains STORE-013 scope.

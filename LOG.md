@@ -261,3 +261,33 @@ The final correction cleanly separates previewable colour swatches from availabl
 DECISION
 STORE-006 is accepted. Pull request #5 was merged to `main` at merge commit `45e0a2767f0cc8cde48b3f2ef90127f4434ad34f`. STORE-007 — Product Page becomes the next planned initiative.
 
+## 2026-09-28 — STORE-007 implementation and verification
+
+IMPLEMENTATION
+
+Created branch `luna/STORE-007-product-page` from accepted main SHA `61174cc63d353acac9d386afe7dbccac5838febd`. Advanced the theme version to `0.7.0` in both `functions.php` and the `style.css` header. Added the hook-first PDP layer in `inc/woocommerce/product-page.php`, `inc/woocommerce/product-page-settings.php`, `assets/css/product-page.css` and `assets/js/product-page.js`; no WooCommerce template override, AJAX, third-party gallery library or competing variation engine was introduced.
+
+IMPLEMENTATION
+
+The PDP preserves native WooCommerce gallery images, links, variation image updates, zoom and lightbox behavior while removing only FlexSlider support on single-product pages. Presentation is a wide desktop two-column image grid, a tablet one-column gallery beside a sticky summary, and a mobile horizontal CSS scroll-snap gallery with normal-flow purchase content. The summary uses native brand archive links, native price HTML with `variation.price_html` synchronization, real `pa_colour`/`pa_size` buttons backed by native selects, WooCommerce availability/quantity, `Add to bag`, and native `<details>/<summary>` accordions.
+
+IMPLEMENTATION
+
+Added Customizer page selectors under `SwimShop Product Page`: `Size Guide Page` and `Shipping & Returns Page`, both sanitized with `absint`. Product Details uses long-description-first/short-description-fallback content. Shipping & Returns renders only configured page content. Material & Care was intentionally not implemented. Related Products retain the accepted STORE-006 retail card system unchanged.
+
+VERIFICATION
+
+Upgraded the Local-only PDP fixture separately from the STORE-005 archive overflow fixture. Hidden `STORE-007 TEST Variable Product Page` has five gallery images and asymmetric combinations: Black S/M/L, Navy M/L/XL and Blue S/M, with mapped local variation images. The existing STORE-005 variable fixture retains seven colours and `+2` archive overflow. Temporary local pages were assigned through theme mods for configured/unconfigured UAT and restored after the check.
+
+VERIFICATION
+
+The expanded `tools/visual-uat.mjs` passed at 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px with zero PDP console/page errors. It verified HTTP success, no overflow, breadcrumb, five-image gallery nodes, desktop grid/mobile scroll-snap presentation, sticky/normal-flow summary behavior, brand, one H1, native price, dynamic variation price, variation image, keyboard colour/size controls, disabled combinations, reset, both accordions, no default tabs/meta/excerpt and related retail-card parity. STORE-003/004/005/006 regressions remained green.
+
+VERIFICATION
+
+Manual Local checks passed simple, sale, out-of-stock, no-image, single-image, multi-gallery and variable PDP fixtures. Simple and valid variable products added through native WooCommerce forms and updated the cart fragment count. The configured Size Guide link and Shipping & Returns accordion resolved correctly; when both settings were cleared, both UI elements were absent. Native zoom/lightbox opened successfully, and the FlexSlider wrapper/transform was absent.
+
+HANDOFF
+
+STORE-007 implementation and verification are complete on `luna/STORE-007-product-page`; branch remains unmerged and is ready for Sol review. STORE-008 has not started.
+
