@@ -192,6 +192,8 @@
   position: absolute;
   width: 1px !important;
   height: 1px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
   margin: -1px;
   padding: 0;
   overflow: hidden;
@@ -199,6 +201,38 @@
   white-space: nowrap;
   border: 0;
   pointer-events: none;
+}
+
+.ssz-product-page div.product.ssz-product-page--enhanced form.cart .variations tr.ssz-variation-native-row--enhanced {
+  margin-top: 0;
+}
+
+.ssz-product-page div.product.ssz-product-page--enhanced form.cart .variations tr.ssz-variation-native-row--enhanced:not(.ssz-variation-native-row--has-reset) {
+  display: none;
+}
+
+.ssz-product-page div.product.ssz-product-page--enhanced form.cart .variations tr.ssz-variation-native-row--enhanced th.label {
+  display: none;
+  margin: 0;
+}
+
+.ssz-product-page div.product.ssz-product-page--enhanced form.cart .variations tr.ssz-variation-native-row--enhanced td.value {
+  min-height: 0;
+}
+
+.ssz-product-page div.product.ssz-product-page--enhanced form.cart .variations tr.ssz-variation-native-row--has-reset td.value {
+  line-height: 1.15;
+}
+
+.ssz-product-page div.product.ssz-product-page--enhanced form.cart .variations tr.ssz-variation-native-row--has-reset .reset_variations {
+  display: inline-block;
+  margin: 0;
+  color: var(--ssz-color-text-muted);
+  font-size: .72rem;
+  font-weight: var(--ssz-font-weight-semibold);
+  line-height: 1.15;
+  text-decoration: underline;
+  text-underline-offset: .18em;
 }
 
 .ssz-product-page .ssz-variation-control {

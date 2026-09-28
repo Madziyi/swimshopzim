@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'SSZ_THEME_VERSION', '0.7.0' );
+define( 'SSZ_THEME_VERSION', '0.7.1' );
 define( 'SSZ_THEME_DIR', get_template_directory() );
 define( 'SSZ_THEME_URI', get_template_directory_uri() );
 

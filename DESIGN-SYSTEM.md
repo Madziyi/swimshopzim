@@ -100,6 +100,8 @@ The PDP remains classic WooCommerce markup enhanced through hooks. `product-page
 
 The purchase panel uses native `product_brand`, native price HTML, WooCommerce availability and quantity behavior, and customer-facing `Add to bag` copy. `pa_colour` and `pa_size` receive button controls only after JavaScript enhancement; the underlying native selects remain the commerce source of truth and mirror WooCommerce availability. Variation price and image updates are taken from WooCommerce events/data rather than recalculated by the theme. Product Details and the optional Shipping & Returns content use native `<details>/<summary>`. There is deliberately no Material & Care section, wishlist, compare, quick buy, fake delivery promise or gallery library.
 
+The progressive-enhancement boundary is attribute-specific. Enhanced `pa_colour`/`pa_size` native rows are marked with stable classes, their visible labels are removed, rows without `.reset_variations` collapse, and the reset-bearing row preserves WooCommerce's native reset behavior without a second reset engine. Native selects remain present and visually hidden only after enhancement; unsupported variation attributes keep their native labels/selects.
+
 Global PDP policy content is configured through the `SwimShop Product Page` Customizer section using sanitized page IDs: `Size Guide Page` renders a normal link only when configured, and `Shipping & Returns Page` renders an accordion only when configured.
 
 ## Accessibility contract

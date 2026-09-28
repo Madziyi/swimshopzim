@@ -397,6 +397,38 @@ const inspectProductPage = async (page) => {
   });
   const imageNodes = gallery ? [...gallery.querySelectorAll('.woocommerce-product-gallery__image img:not(.zoomImg)')] : [];
   const details = [...document.querySelectorAll('.ssz-product-accordion')];
+  const isVisible = (element) => {
+    if (!element) return false;
+    const style = getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+  };
+  const isVisuallyHidden = (element) => {
+    if (!element) return false;
+    const style = getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    return style.position === 'absolute' && rect.width <= 1 && rect.height <= 1 && style.pointerEvents === 'none' && style.clip !== 'auto';
+  };
+  const nativeColourSelect = document.querySelector('form.variations_form select[name="attribute_pa_colour"]');
+  const nativeSizeSelect = document.querySelector('form.variations_form select[name="attribute_pa_size"]');
+  const nativeColourRow = nativeColourSelect?.closest('tr');
+  const nativeSizeRow = nativeSizeSelect?.closest('tr');
+  const nativeRows = [ nativeColourRow, nativeSizeRow ].filter(Boolean);
+  const visibleColourLabels = [
+    ...document.querySelectorAll('form.variations_form .variations label'),
+    ...document.querySelectorAll('[data-ssz-attribute="attribute_pa_colour"] legend'),
+  ].filter((element) => element.textContent?.trim().replace(/\s+/g, ' ') === 'Colour' && isVisible(element));
+  const visibleSizeLabels = [
+    ...document.querySelectorAll('form.variations_form .variations label'),
+    ...document.querySelectorAll('[data-ssz-attribute="attribute_pa_size"] legend'),
+  ].filter((element) => element.textContent?.trim().replace(/\s+/g, ' ') === 'Size' && isVisible(element));
+  const customColourControl = document.querySelector('[data-ssz-attribute="attribute_pa_colour"]');
+  const customSizeControl = document.querySelector('[data-ssz-attribute="attribute_pa_size"]');
+  const rowBottoms = nativeRows.map((row) => row.getBoundingClientRect().bottom);
+  const firstCustomControlTop = customColourControl?.getBoundingClientRect().top ?? 0;
+  const lastNativeRowBottom = rowBottoms.length ? Math.max(...rowBottoms) : firstCustomControlTop;
+  const unsupportedNativeSelects = [...document.querySelectorAll('form.variations_form select[name^="attribute_"]')]
+    .filter((select) => ![ 'attribute_pa_colour', 'attribute_pa_size' ].includes(select.getAttribute('name')));
 
   return {
     mainFound: Boolean(mainProduct),
@@ -423,6 +455,24 @@ const inspectProductPage = async (page) => {
     nativeSize: Boolean(document.querySelector('form.variations_form select[name="attribute_pa_size"]')),
     colourControl: Boolean(document.querySelector('[data-ssz-attribute="attribute_pa_colour"]')),
     sizeControl: Boolean(document.querySelector('[data-ssz-attribute="attribute_pa_size"]')),
+    nativeColourRowEnhanced: Boolean(nativeColourRow?.classList.contains('ssz-variation-native-row--enhanced')),
+    nativeSizeRowEnhanced: Boolean(nativeSizeRow?.classList.contains('ssz-variation-native-row--enhanced')),
+    nativeColourRowHasReset: Boolean(nativeColourRow?.classList.contains('ssz-variation-native-row--has-reset')),
+    visibleColourLabelCount: visibleColourLabels.length,
+    visibleSizeLabelCount: visibleSizeLabels.length,
+    noDuplicateNativeColourLabel: visibleColourLabels.filter((element) => element.closest('.variations')).length === 0,
+    noDuplicateNativeSizeLabel: visibleSizeLabels.filter((element) => element.closest('.variations')).length === 0,
+    customColourVisible: isVisible(customColourControl),
+    customSizeVisible: isVisible(customSizeControl),
+    nativeColourVisuallyHidden: isVisuallyHidden(nativeColourSelect),
+    nativeSizeVisuallyHidden: isVisuallyHidden(nativeSizeSelect),
+    nativeRowsNoMeaningfulBlankGeometry: Boolean(
+      nativeColourRow && nativeColourRow.getBoundingClientRect().height <= 1 &&
+      nativeSizeRow && nativeSizeRow.getBoundingClientRect().height <= (nativeSizeRow.querySelector('.reset_variations') ? 24 : 1) &&
+      firstCustomControlTop - lastNativeRowBottom <= 32,
+    ),
+    nativeResetPresent: Boolean(document.querySelector('form.variations_form .reset_variations')),
+    unsupportedNativeAttributesVisible: unsupportedNativeSelects.every((select) => isVisible(select) && isVisible(select.closest('tr')?.querySelector('label'))),
     details: details.map((detail) => detail.querySelector('summary')?.textContent?.trim() ?? ''),
     hasDefaultTabs: Boolean(document.querySelector('.woocommerce-tabs, .wc-tabs-wrapper')),
     hasDefaultExcerpt: Boolean(document.querySelector('.woocommerce-product-details__short-description')),
@@ -490,13 +540,32 @@ const inspectProductPageInteractions = async (page) => {
 
   await page.locator('.reset_variations').click();
   await page.waitForTimeout(300);
-  result.resetSync = await page.locator('select[name="attribute_pa_colour"]').evaluate((select) => select.value === '') && await page.locator('select[name="attribute_pa_size"]').evaluate((select) => select.value === '') && await page.locator('[data-ssz-product-price]').innerText().then((text) => text.includes('$89.00') && text.includes('$109.00')) && await page.locator('[data-ssz-variation-control] button[aria-pressed="true"]').count() === 0;
+  result.resetSync = await page.locator('select[name="attribute_pa_colour"]').evaluate((select) => select.value === '') && await page.locator('select[name="attribute_pa_size"]').evaluate((select) => select.value === '') && await page.locator('[data-ssz-product-price]').innerText().then((text) => text.includes('$89.00') && text.includes('$109.00')) && await page.locator('[data-ssz-variation-control] button[aria-pressed="true"]').count() === 0 && await page.locator('[data-ssz-selected-label]').evaluateAll((labels) => labels.every((label) => label.textContent?.trim() === ''));
 
   const productDetails = page.getByText('Product details', { exact: true });
   await productDetails.press('Enter');
   result.accordionsKeyboard = await page.locator('details').filter({ hasText: 'Product details' }).getAttribute('open') !== null;
   return result;
 };
+
+const inspectProductPageFallback = async (page) => page.evaluate(() => {
+  const visible = (element) => {
+    if (!element) return false;
+    const style = getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+  };
+  const nativeColour = document.querySelector('form.variations_form select[name="attribute_pa_colour"]');
+  const nativeSize = document.querySelector('form.variations_form select[name="attribute_pa_size"]');
+  return {
+    nativeColourVisible: visible(nativeColour),
+    nativeSizeVisible: visible(nativeSize),
+    nativeColourLabelVisible: visible(nativeColour?.closest('tr')?.querySelector('label')),
+    nativeSizeLabelVisible: visible(nativeSize?.closest('tr')?.querySelector('label')),
+    customColourHidden: getComputedStyle(document.querySelector('[data-ssz-attribute="attribute_pa_colour"]')).display === 'none',
+    customSizeHidden: getComputedStyle(document.querySelector('[data-ssz-attribute="attribute_pa_size"]')).display === 'none',
+  };
+});
 
 const inspectRelatedSwatchInteraction = async (page) => {
   const cards = page.locator('.related.products ul.products li.ssz-product-card');
@@ -663,6 +732,14 @@ let archiveFunctional = {
   pagination: false,
   consoleErrors: [],
   pageErrors: [],
+};
+let pdpFallback = {
+  nativeColourVisible: false,
+  nativeSizeVisible: false,
+  nativeColourLabelVisible: false,
+  nativeSizeLabelVisible: false,
+  customColourHidden: false,
+  customSizeHidden: false,
 };
 
 try {
@@ -1080,6 +1157,14 @@ try {
 
     await context.close();
   }
+
+  const fallbackContext = await browser.newContext({ viewport: { width: 1280, height: 900 }, javaScriptEnabled: false });
+  const fallbackPage = await fallbackContext.newPage();
+  await fallbackPage.goto(new URL('product/store-007-test-variable-product-page/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+  pdpFallback = await inspectProductPageFallback(fallbackPage);
+  await fallbackPage.close();
+  await fallbackContext.close();
+
 try {
   const functionalContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const functionalPage = await functionalContext.newPage();
@@ -1209,10 +1294,11 @@ if (process.env.SSZ_UAT_SUMMARY_ONLY === '1') {
       product: result.pdp.product,
       interactions: result.pdp.interactions,
       relatedSwatchInteraction: result.pdp.relatedSwatchInteraction,
+      fallback: pdpFallback,
     },
   })), null, 2));
 } else {
-  console.log(JSON.stringify({ baseUrl, executablePath, requireLocalMenu, fallbackContract, results, archiveFunctional }, null, 2));
+  console.log(JSON.stringify({ baseUrl, executablePath, requireLocalMenu, fallbackContract, pdpFallback, results, archiveFunctional }, null, 2));
 }
 
 const failures = results.filter((result) => {
@@ -1268,7 +1354,7 @@ const failures = results.filter((result) => {
     !result.shop.archive.header || !result.shop.archive.toolbar || !result.shop.archive.count || !result.shop.archive.filterToggle || !result.shop.archive.ordering || !result.shop.archive.grid || result.shop.archive.horizontalOverflow || result.shop.archive.brokenImages || result.shop.archive.columnCount !== result.shop.archive.expectedColumns || result.shop.archive.presentation.brandColor !== 'rgb(35, 136, 173)' || result.shop.archive.presentation.titleWeight !== '700' || result.shop.archive.presentation.priceWeight !== '600' || result.shop.archive.presentation.saleCurrentWeight !== '600' || result.shop.archive.presentation.saleOldWeight !== '500' || result.shop.archive.presentation.saleOldDecoration !== 'line-through' || result.shop.archive.presentation.brandMediaGap < 10 || result.shop.archive.presentation.brandMediaGap > 18 || result.shop.archive.presentation.brandTitleGap < 4 || result.shop.archive.presentation.brandTitleGap > 9 || result.shop.archive.presentation.swatchTitleGap < 4 || result.shop.archive.presentation.swatchTitleGap > 10 || result.shop.archive.presentation.swatchPriceGap < 4 || result.shop.archive.presentation.swatchPriceGap > 10 || (result.width <= 430 && (result.shop.archive.presentation.minMediaCardRatio < .97 || result.shop.archive.presentation.columnGap < 7 || result.shop.archive.presentation.columnGap > 16 || result.shop.archive.presentation.rowMediaAlignment > 2 || result.shop.archive.presentation.rowInfoGap < 0 || result.shop.archive.presentation.rowInfoGap > 50)) ||
     !result.shop.archive.drawer.opened || !result.shop.archive.drawer.bodyScrollLock || !result.shop.archive.drawer.focusInside || !result.shop.archive.drawer.closedByEscape || !result.shop.archive.drawer.focusRestored || (result.shop.archive.drawer.accordion.configured && (!result.shop.archive.drawer.accordion.expanded || !result.shop.archive.drawer.accordion.collapsed)) ||
     !result.pdp.themeVisible || result.pdp.responseStatus === null || result.pdp.responseStatus >= 400 || result.pdp.navigationError || result.pdp.horizontalOverflow || result.pdp.consoleErrors.length || result.pdp.pageErrors.length ||
-    !result.pdp.product.mainFound || result.pdp.product.mainHasCardClass || result.pdp.product.mainHasFitClass || !result.pdp.product.breadcrumb || !result.pdp.product.galleryFound || result.pdp.product.galleryImageCount < 1 || !result.pdp.product.galleryPrimaryImageLoaded || !result.pdp.product.galleryImagesHaveAlt || result.pdp.product.galleryLinks < 1 || (result.width >= 1121 && !result.pdp.product.galleryUsesGrid) || (result.width <= 767 && !result.pdp.product.galleryUsesScrollSnap) || result.pdp.product.galleryHasFlexViewport || result.pdp.product.galleryTransform !== 'none' || !result.pdp.product.summaryFound || !result.pdp.product.brand || result.pdp.product.brandColor !== 'rgb(35, 136, 173)' || result.pdp.product.titleCount !== 1 || !result.pdp.product.price || !result.pdp.product.addToBag || !result.pdp.product.nativeColour || !result.pdp.product.nativeSize || !result.pdp.product.colourControl || !result.pdp.product.sizeControl || result.pdp.product.details.length !== 2 || result.pdp.product.details.includes('Material & care') || result.pdp.product.hasDefaultTabs || result.pdp.product.hasDefaultExcerpt || result.pdp.product.hasDefaultMeta || result.pdp.product.hasMaterialCare || !result.pdp.product.relatedFound || !result.pdp.product.relatedCardContract || !result.pdp.product.relatedRetailPresentation || !result.pdp.product.relatedSwatchContract || !result.pdp.interactions.initialRange || !result.pdp.interactions.initialDisabled || !result.pdp.interactions.colourSync || !result.pdp.interactions.colourName || !result.pdp.interactions.sizeSync || !result.pdp.interactions.asymmetricDisabled || !result.pdp.interactions.disabledCannotActivate || !result.pdp.interactions.variationFound || !result.pdp.interactions.variationPrice || !result.pdp.interactions.variationImage || !result.pdp.interactions.resetSync || !result.pdp.interactions.sizeGuide || !result.pdp.interactions.shippingReturns || !result.pdp.interactions.accordionsKeyboard || !result.pdp.relatedSwatchInteraction.configured || !result.pdp.relatedSwatchInteraction.semanticContract || (!result.pdp.relatedSwatchInteraction.selected && !result.pdp.relatedSwatchInteraction.availableOnlySafe) || !result.pdp.relatedSwatchInteraction.noNavigation || !result.pdp.relatedSwatchInteraction.noNestedInteractive ||
+    !result.pdp.product.mainFound || result.pdp.product.mainHasCardClass || result.pdp.product.mainHasFitClass || !result.pdp.product.breadcrumb || !result.pdp.product.galleryFound || result.pdp.product.galleryImageCount < 1 || !result.pdp.product.galleryPrimaryImageLoaded || !result.pdp.product.galleryImagesHaveAlt || result.pdp.product.galleryLinks < 1 || (result.width >= 1121 && !result.pdp.product.galleryUsesGrid) || (result.width <= 767 && !result.pdp.product.galleryUsesScrollSnap) || result.pdp.product.galleryHasFlexViewport || result.pdp.product.galleryTransform !== 'none' || !result.pdp.product.summaryFound || !result.pdp.product.brand || result.pdp.product.brandColor !== 'rgb(35, 136, 173)' || result.pdp.product.titleCount !== 1 || !result.pdp.product.price || !result.pdp.product.addToBag || !result.pdp.product.nativeColour || !result.pdp.product.nativeSize || !result.pdp.product.colourControl || !result.pdp.product.sizeControl || !result.pdp.product.nativeColourRowEnhanced || !result.pdp.product.nativeSizeRowEnhanced || result.pdp.product.visibleColourLabelCount !== 1 || result.pdp.product.visibleSizeLabelCount !== 1 || !result.pdp.product.noDuplicateNativeColourLabel || !result.pdp.product.noDuplicateNativeSizeLabel || !result.pdp.product.customColourVisible || !result.pdp.product.customSizeVisible || !result.pdp.product.nativeColourVisuallyHidden || !result.pdp.product.nativeSizeVisuallyHidden || !result.pdp.product.nativeRowsNoMeaningfulBlankGeometry || !result.pdp.product.nativeResetPresent || !result.pdp.product.unsupportedNativeAttributesVisible || result.pdp.product.details.length !== 2 || result.pdp.product.details.includes('Material & care') || result.pdp.product.hasDefaultTabs || result.pdp.product.hasDefaultExcerpt || result.pdp.product.hasDefaultMeta || result.pdp.product.hasMaterialCare || !result.pdp.product.relatedFound || !result.pdp.product.relatedCardContract || !result.pdp.product.relatedRetailPresentation || !result.pdp.product.relatedSwatchContract || !result.pdp.interactions.initialRange || !result.pdp.interactions.initialDisabled || !result.pdp.interactions.colourSync || !result.pdp.interactions.colourName || !result.pdp.interactions.sizeSync || !result.pdp.interactions.asymmetricDisabled || !result.pdp.interactions.disabledCannotActivate || !result.pdp.interactions.variationFound || !result.pdp.interactions.variationPrice || !result.pdp.interactions.variationImage || !result.pdp.interactions.resetSync || !result.pdp.interactions.sizeGuide || !result.pdp.interactions.shippingReturns || !result.pdp.interactions.accordionsKeyboard || !result.pdp.relatedSwatchInteraction.configured || !result.pdp.relatedSwatchInteraction.semanticContract || (!result.pdp.relatedSwatchInteraction.selected && !result.pdp.relatedSwatchInteraction.availableOnlySafe) || !result.pdp.relatedSwatchInteraction.noNavigation || !result.pdp.relatedSwatchInteraction.noNestedInteractive ||
     !result.headerMode.colorLogoVisible || !result.headerMode.colorLogoLoaded || !result.headerMode.cartVisible ||
     !result.search.opened || !result.search.inputFocused || !result.search.closed || !result.search.focusRestored ||
     mobileFailure || desktopFailure || missingConfiguredMenu ||
@@ -1285,5 +1371,10 @@ if (failures.length) {
 
 if (!archiveFunctional.filterSubmit || !archiveFunctional.activeChips || !archiveFunctional.sorting || archiveFunctional.popularityFirst !== 'STORE-005 TEST Simple Performance Suit' || !archiveFunctional.categoryArchive || !archiveFunctional.brandArchive || !archiveFunctional.emptyState || (process.env.SSZ_REQUIRE_PAGINATION === '1' && !archiveFunctional.pagination) || archiveFunctional.consoleErrors.length || archiveFunctional.pageErrors.length) {
   console.error('Archive functional UAT failed');
+  process.exitCode = 1;
+}
+
+if (!pdpFallback.nativeColourVisible || !pdpFallback.nativeSizeVisible || !pdpFallback.nativeColourLabelVisible || !pdpFallback.nativeSizeLabelVisible || !pdpFallback.customColourHidden || !pdpFallback.customSizeHidden) {
+  console.error('PDP native-select fallback UAT failed');
   process.exitCode = 1;
 }

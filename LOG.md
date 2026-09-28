@@ -291,3 +291,17 @@ HANDOFF
 
 STORE-007 implementation and verification are complete on `luna/STORE-007-product-page`; branch remains unmerged and is ready for Sol review. STORE-008 has not started.
 
+## 2026-09-28 — STORE-007 variation-row progressive-enhancement correction
+
+IMPLEMENTATION
+
+Corrected the enhanced PDP variation form so only the native `pa_colour` and `pa_size` rows receive the `ssz-variation-native-row--enhanced` class. Rows without WooCommerce's `.reset_variations` collapse completely after JavaScript enhancement; the reset-containing row keeps the native reset link while its visible label and unnecessary geometry collapse. The native selects remain in the DOM, remain WooCommerce's commerce source of truth, and remain visually hidden with their Woo minimum dimensions reset. Unsupported variation attributes remain native and visible. JS-off behavior remains the original native WooCommerce form.
+
+VERIFICATION
+
+Extended `tools/visual-uat.mjs` to assert one visible Colour label and one visible Size label, custom group visibility, native-select presence and visual hiding, enhanced row classes, collapsed native-row geometry, reset synchronization, unsupported-attribute fallback where present, and a dedicated JavaScript-disabled native fallback pass. The full UAT passed at 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px. Local browser inspection confirmed the size select's WooCommerce `min-width:75%` and `min-height:48px` constraints were neutralized to 1px enhanced geometry.
+
+HANDOFF
+
+STORE-007 variation-row correction is complete on `luna/STORE-007-product-page`, remains unmerged, and is ready for Sol review. STORE-008 has not started.
+

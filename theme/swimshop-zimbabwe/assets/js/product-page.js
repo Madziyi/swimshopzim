@@ -16,6 +16,24 @@
 	product.classList.add( 'ssz-product-page--enhanced' );
 
 	const getSelect = ( attributeName ) => form ? form.querySelector( `select[name="${ attributeName }"]` ) : null;
+	const enhancedNativeAttributes = [ 'attribute_pa_colour', 'attribute_pa_size' ];
+
+	const enhanceNativeRow = ( select ) => {
+		const attributeName = select.getAttribute( 'name' );
+
+		if ( ! enhancedNativeAttributes.includes( attributeName ) ) {
+			return;
+		}
+
+		const row = select.closest( 'tr' );
+
+		if ( ! row ) {
+			return;
+		}
+
+		row.classList.add( 'ssz-variation-native-row--enhanced' );
+		row.classList.toggle( 'ssz-variation-native-row--has-reset', Boolean( row.querySelector( '.reset_variations' ) ) );
+	};
 
 	const syncControl = ( control ) => {
 		const attributeName = control.getAttribute( 'data-ssz-attribute' );
@@ -68,6 +86,7 @@
 				return;
 			}
 
+			enhanceNativeRow( select );
 			select.setAttribute( 'tabindex', '-1' );
 			select.setAttribute( 'aria-hidden', 'true' );
 

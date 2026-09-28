@@ -39,6 +39,8 @@ The STORE-006 visual refinement uses a reusable retail-card presentation for arc
 
 STORE-007 adds a hook-first product-page layer without copying WooCommerce templates. Native gallery markup remains compatible with variation images, zoom and lightbox; FlexSlider is disabled for the PDP so `product-page.css` can provide a desktop image grid, tablet stack and mobile scroll-snap gallery. The purchase summary keeps native brand, price, availability, quantity and variation behavior, with progressive `pa_colour`/`pa_size` button controls and `Add to bag` copy. The PDP uses native Product Details and configured Shipping & Returns accordions, an optional Customizer-managed Size Guide link, and no Material & Care section. Local-only fixture data and policy pages are documented in `LIVE-STATE.md` and are never packaged.
 
+The current STORE-007 correction keeps WooCommerce's native `pa_colour`/`pa_size` rows as the progressive-enhancement fallback, collapses only their redundant enhanced labels/geometry, preserves the native reset link, and leaves unsupported variation attributes native.
+
 ## Visual UAT
 
 With the Local site running and the custom theme active, install the development dependency and run the exact-width browser harness:
