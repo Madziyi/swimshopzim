@@ -6,7 +6,13 @@
   cards.forEach((swatchRow) => {
     const card = swatchRow.closest('.ssz-product-card');
     const primary = card?.querySelector('.ssz-product-card__image--primary');
-    const variationData = JSON.parse(swatchRow.dataset.sszColourVariations || '{}');
+    let variationData = {};
+
+    try {
+      variationData = JSON.parse(swatchRow.dataset.sszColourVariations || '{}');
+    } catch (error) {
+      variationData = {};
+    }
 
     if (!card || !primary) return;
 
@@ -17,10 +23,14 @@
       alt: primary.getAttribute('alt') || '',
     };
 
-    swatchRow.querySelectorAll('[data-ssz-colour-swatch]').forEach((button) => {
+    [...swatchRow.querySelectorAll('[data-ssz-colour-swatch]')]
+      .filter((button) => typeof variationData[button.dataset.colourSlug || '']?.src === 'string' && variationData[button.dataset.colourSlug || ''].src.trim() !== '')
+      .forEach((button) => {
       button.addEventListener('click', () => {
         const slug = button.dataset.colourSlug || '';
         const image = variationData[slug];
+
+        if (!image || typeof image.src !== 'string' || image.src.trim() === '') return;
 
         swatchRow.querySelectorAll('[data-ssz-colour-swatch]').forEach((item) => item.setAttribute('aria-pressed', item === button ? 'true' : 'false'));
         card.classList.add('ssz-product-card--colour-preview');

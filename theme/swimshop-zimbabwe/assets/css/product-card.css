@@ -109,9 +109,10 @@
 .woocommerce ul.products li.product.ssz-product-card--retail .price { margin-block: .4rem 0; font-size: .9rem; font-weight: 600; line-height: 1.35; }
 .woocommerce ul.products li.product.ssz-product-card--retail .price ins { font-weight: inherit; }
 .ssz-product-card--retail .ssz-product-card__swatches { align-items: center; display: flex; flex-wrap: nowrap; gap: .45rem; margin-block: .45rem 0; min-height: 1.25rem; }
-.ssz-product-card--retail .ssz-product-card__swatch { align-items: center; background: #fff; border: 1px solid #b9c2cc; border-radius: 50%; cursor: pointer; display: inline-flex; height: 1.25rem; justify-content: center; padding: 0; width: 1.25rem; }
-.ssz-product-card--retail .ssz-product-card__swatch > span { background: var(--ssz-swatch-color, #fff); border: 1px solid rgba(24, 35, 49, .24); border-radius: 50%; display: block; height: .875rem; width: .875rem; }
-.ssz-product-card--retail .ssz-product-card__swatch--unknown > span { background: #fff; border: 1px dashed #596675; }
+.ssz-product-card--retail .ssz-product-card__swatch { align-items: center; background: #fff; border: 1px solid #b9c2cc; border-radius: 50%; cursor: default; display: inline-flex; height: 1.25rem; justify-content: center; padding: 0; width: 1.25rem; }
+.ssz-product-card--retail .ssz-product-card__swatch[data-ssz-colour-swatch] { cursor: pointer; }
+.ssz-product-card--retail .ssz-product-card__swatch > span[aria-hidden="true"] { background: var(--ssz-swatch-color, #fff); border: 1px solid rgba(24, 35, 49, .24); border-radius: 50%; display: block; height: .875rem; width: .875rem; }
+.ssz-product-card--retail .ssz-product-card__swatch--unknown > span[aria-hidden="true"] { background: #fff; border: 1px dashed #596675; }
 .ssz-product-card--retail .ssz-product-card__swatch[aria-pressed="true"] { border: 2px solid var(--ssz-color-ink, #182331); }
 .ssz-product-card--retail .ssz-product-card__swatch:focus-visible { outline: 3px solid var(--ssz-color-focus, #081f3d); outline-offset: 3px; }
 .ssz-product-card--retail .ssz-product-card__swatches-more { align-items: center; color: var(--ssz-color-text-muted); display: inline-flex; font-size: .75rem; font-weight: 600; min-height: 1.25rem; }

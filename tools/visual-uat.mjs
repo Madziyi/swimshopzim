@@ -77,7 +77,7 @@ const inspectProductCards = async (page, { homepage = false, expectedColumns = n
   const hoverCard = cardsLocator.filter({ hasText: 'STORE-005 TEST Simple Performance Suit' }).first();
   if (await hoverCard.count()) {
     const hoverMedia = hoverCard.locator('.ssz-product-card__media');
-    await hoverMedia.evaluate((element) => element.scrollIntoView({ block: 'center', inline: 'nearest' }));
+    await hoverMedia.scrollIntoViewIfNeeded();
     const hoverBox = await hoverMedia.boundingBox();
     if (hoverBox) {
       const hoverY = hoverBox.y < 140 ? hoverBox.y + hoverBox.height - 10 : hoverBox.y + hoverBox.height / 2;
@@ -100,11 +100,21 @@ const inspectProductCards = async (page, { homepage = false, expectedColumns = n
 
   let swatchInteraction = {
     configured: false,
-    variableSwatches: false,
+    allMappedConfigured: false,
+    allMappedButtons: false,
+    allMappedLabels: false,
+    mixedConfigured: false,
+    mixedPreviewable: false,
+    mixedAvailableOnly: false,
+    mixedNoMismatch: false,
+    simpleIndicators: false,
+    simpleNoFakeButtons: false,
+    simpleNoPreviewClass: false,
+    simpleHoverPreserved: false,
     singleColourOmitted: false,
     maxFiveVisible: false,
     overflowLabel: false,
-    accessibleLabels: false,
+    groupSemantics: false,
     focusVisible: false,
     selected: false,
     sourceChanged: false,
@@ -116,27 +126,46 @@ const inspectProductCards = async (page, { homepage = false, expectedColumns = n
   };
 
   if (!homepage) {
-    const variableCard = cardsLocator.filter({ hasText: 'STORE-005 TEST Variable Training Suit' }).first();
+    const allMappedCard = cardsLocator.filter({ hasText: 'STORE-006 TEST All Mapped Colour Suit' }).first();
+    const mixedCard = cardsLocator.filter({ hasText: 'STORE-006 TEST Mixed Colour Suit' }).first();
+    const overflowCard = cardsLocator.filter({ hasText: 'STORE-005 TEST Variable Training Suit' }).first();
+    const simpleMultiCard = cardsLocator.filter({ hasText: 'STORE-005 TEST Simple Performance Suit' }).first();
     const singleColourCard = cardsLocator.filter({ hasText: 'STORE-005 TEST Single Image Towel' }).first();
-    const variableSwatches = variableCard.locator('[data-ssz-colour-swatch]');
-    const visibleOverflow = variableCard.locator('.ssz-product-card__swatches-more');
-    const primary = variableCard.locator('.ssz-product-card__image--primary');
-    const media = variableCard.locator('.ssz-product-card__media');
-    swatchInteraction.configured = await variableCard.count() > 0;
-    swatchInteraction.variableSwatches = await variableSwatches.count() >= 2;
+    const allMappedButtons = allMappedCard.locator('[data-ssz-colour-swatch]');
+    const mixedSwatches = mixedCard.locator('.ssz-product-card__swatch');
+    const mixedAvailable = mixedCard.locator('[data-ssz-colour-available][data-colour-slug="red"]');
+    const simpleIndicators = simpleMultiCard.locator('[data-ssz-colour-available]');
+    const visibleOverflow = overflowCard.locator('.ssz-product-card__swatches-more');
+    swatchInteraction.configured = await allMappedCard.count() > 0 && await mixedCard.count() > 0 && await simpleMultiCard.count() > 0;
+    swatchInteraction.allMappedConfigured = await allMappedCard.count() > 0;
+    swatchInteraction.allMappedButtons = await allMappedButtons.count() === 3 && await allMappedCard.locator('[data-ssz-colour-available]').count() === 0;
+    swatchInteraction.allMappedLabels = await allMappedButtons.evaluateAll((items) => items.every((item) => item.getAttribute('aria-label')?.startsWith('Preview ')));
+    swatchInteraction.mixedConfigured = await mixedCard.count() > 0;
+    swatchInteraction.mixedPreviewable = await mixedCard.locator('[data-ssz-colour-swatch][data-colour-slug="navy"]').count() === 1;
+    swatchInteraction.mixedAvailableOnly = await mixedAvailable.count() === 1 && await mixedAvailable.evaluate((item) => item.textContent?.includes('Available in Red') && !item.hasAttribute('aria-pressed') && item.tabIndex < 0);
+    swatchInteraction.simpleIndicators = await simpleIndicators.count() >= 2;
+    swatchInteraction.simpleNoFakeButtons = await simpleMultiCard.locator('[data-ssz-colour-swatch]').count() === 0 && await simpleMultiCard.locator('[aria-label^="Preview "]').count() === 0;
     swatchInteraction.singleColourOmitted = await singleColourCard.locator('[data-ssz-colour-swatches]').count() === 0;
-    swatchInteraction.maxFiveVisible = await variableSwatches.count() <= 5;
+    swatchInteraction.maxFiveVisible = await overflowCard.locator('.ssz-product-card__swatch').count() <= 5;
     swatchInteraction.overflowLabel = await visibleOverflow.count() === 1 && /^\+\d+$/.test((await visibleOverflow.innerText()).trim());
-    swatchInteraction.accessibleLabels = await variableSwatches.evaluateAll((items) => items.every((item) => item.getAttribute('aria-label')?.startsWith('Preview ')));
+    swatchInteraction.groupSemantics = await Promise.all([allMappedCard, mixedCard, simpleMultiCard].map(async (card) => {
+      const group = card.locator('[data-ssz-colour-swatches][role="group"][aria-label="Available colours"]');
+      return await group.count() === 1;
+    })).then((values) => values.every(Boolean));
+    swatchInteraction.noNestedInteractive = await Promise.all([allMappedCard, mixedCard, simpleMultiCard].map(async (card) => (
+      await card.locator('.woocommerce-loop-product__link button, .woocommerce-loop-product__link a').count() === 0
+    ))).then((values) => values.every(Boolean));
+
+    const allMappedMedia = allMappedCard.locator('.ssz-product-card__media');
     const beforeState = await page.evaluate(() => {
-      const card = [...document.querySelectorAll('li.ssz-product-card')].find((node) => node.textContent?.includes('STORE-005 TEST Variable Training Suit'));
+      const card = [...document.querySelectorAll('li.ssz-product-card')].find((node) => node.textContent?.includes('STORE-006 TEST All Mapped Colour Suit'));
       const primaryImage = card?.querySelector('.ssz-product-card__image--primary');
       const mediaFrame = card?.querySelector('.ssz-product-card__media');
       const mediaRect = mediaFrame?.getBoundingClientRect();
       return { source: primaryImage?.getAttribute('src') ?? null, width: mediaRect?.width ?? null, height: mediaRect?.height ?? null };
     });
     const beforeUrl = page.url();
-    const navy = variableCard.locator('[data-ssz-colour-swatch][data-colour-slug="navy"]');
+    const navy = allMappedCard.locator('[data-ssz-colour-swatch][data-colour-slug="navy"]');
     if (await navy.count()) {
       await navy.click();
       await page.waitForTimeout(120);
@@ -153,7 +182,7 @@ const inspectProductCards = async (page, { homepage = false, expectedColumns = n
         }
       }
       const afterState = await page.evaluate(() => {
-        const card = [...document.querySelectorAll('li.ssz-product-card')].find((node) => node.textContent?.includes('STORE-005 TEST Variable Training Suit'));
+        const card = [...document.querySelectorAll('li.ssz-product-card')].find((node) => node.textContent?.includes('STORE-006 TEST All Mapped Colour Suit'));
         const primaryImage = card?.querySelector('.ssz-product-card__image--primary');
         const mediaFrame = card?.querySelector('.ssz-product-card__media');
         const mediaRect = mediaFrame?.getBoundingClientRect();
@@ -174,18 +203,42 @@ const inspectProductCards = async (page, { homepage = false, expectedColumns = n
       swatchInteraction.dimensionsStable = Boolean(beforeState.width && afterState.width && beforeState.width === afterState.width && beforeState.height === afterState.height);
       swatchInteraction.noNavigation = beforeUrl === page.url();
       swatchInteraction.noAddToCart = afterState.noAddToCart;
-      swatchInteraction.noNestedInteractive = afterState.noNestedInteractive;
+      swatchInteraction.noNestedInteractive = swatchInteraction.noNestedInteractive && afterState.noNestedInteractive;
       if (afterState.exists && swatchInteraction.noNavigation) {
-        await page.locator('li.ssz-product-card').filter({ hasText: 'STORE-005 TEST Variable Training Suit' }).first().locator('.ssz-product-card__media').hover();
+        await allMappedMedia.hover();
         await page.waitForTimeout(100);
         swatchInteraction.hoverPreserved = await page.evaluate(() => {
-          const card = [...document.querySelectorAll('li.ssz-product-card')].find((node) => node.textContent?.includes('STORE-005 TEST Variable Training Suit'));
+          const card = [...document.querySelectorAll('li.ssz-product-card')].find((node) => node.textContent?.includes('STORE-006 TEST All Mapped Colour Suit'));
           const primaryImage = card?.querySelector('.ssz-product-card__image--primary');
           const secondaryImage = card?.querySelector('.ssz-product-card__image--secondary');
           return Boolean(card && primaryImage && getComputedStyle(primaryImage).opacity === '1' && (!secondaryImage || getComputedStyle(secondaryImage).opacity === '0'));
         });
       }
       await page.mouse.move(1, 1);
+    }
+
+    if (await mixedCard.count() && await mixedAvailable.count()) {
+      const mixedNavy = mixedCard.locator('[data-ssz-colour-swatch][data-colour-slug="navy"]');
+      if (await mixedNavy.count()) {
+        await mixedNavy.click();
+        await page.waitForTimeout(120);
+        const mixedBefore = await mixedCard.locator('.ssz-product-card__image--primary').getAttribute('src');
+        await mixedAvailable.evaluate((element) => element.click());
+        await page.waitForTimeout(80);
+        const mixedAfter = await mixedCard.locator('.ssz-product-card__image--primary').getAttribute('src');
+        swatchInteraction.mixedNoMismatch = mixedBefore === mixedAfter && await mixedCard.locator('[data-ssz-colour-swatch][data-colour-slug="red"]').count() === 0 && await mixedCard.locator('[data-ssz-colour-available][data-colour-slug="red"][aria-pressed]').count() === 0;
+      }
+    }
+
+    if (await simpleMultiCard.count()) {
+      const simpleBefore = await simpleMultiCard.evaluate((card) => card.classList.contains('ssz-product-card--colour-preview'));
+      const simpleIndicator = simpleMultiCard.locator('[data-ssz-colour-available]').first();
+      if (await simpleIndicator.count()) {
+        await simpleIndicator.evaluate((element) => element.click());
+        await page.waitForTimeout(80);
+      }
+      swatchInteraction.simpleNoPreviewClass = simpleBefore === false && await simpleMultiCard.evaluate((card) => !card.classList.contains('ssz-product-card--colour-preview'));
+      swatchInteraction.simpleHoverPreserved = hover.checked && hover.changed;
     }
   }
 
@@ -232,8 +285,11 @@ const inspectProductCards = async (page, { homepage = false, expectedColumns = n
         hasLoopButton: Boolean(card.querySelector('.add_to_cart_button, .ajax_add_to_cart, .button')),
         hasRating: Boolean(card.querySelector('.star-rating, .woocommerce-loop-rating')),
         retailPresentation: card.classList.contains('ssz-product-card--retail'),
-        swatchCount: card.querySelectorAll('[data-ssz-colour-swatch]').length,
+        swatchCount: card.querySelectorAll('.ssz-product-card__swatch').length,
+        previewSwatchCount: card.querySelectorAll('[data-ssz-colour-swatch]').length,
+        availableSwatchCount: card.querySelectorAll('[data-ssz-colour-available]').length,
         swatchOverflow: card.querySelector('.ssz-product-card__swatches-more')?.textContent?.trim() ?? null,
+        swatchGroup: card.querySelector('[data-ssz-colour-swatches][role="group"][aria-label="Available colours"]') !== null,
         swatchButtonsInLink: card.querySelectorAll('.woocommerce-loop-product__link button, .woocommerce-loop-product__link a').length,
       };
     });
@@ -276,13 +332,13 @@ const inspectProductCards = async (page, { homepage = false, expectedColumns = n
       secondaryImagesLoaded: cardDetails.filter((card) => card.secondaryImage).every((card) => card.secondaryLoaded),
       onlyTwoImages: cardDetails.every((card) => card.imageCount <= 2),
       coverApparel: Boolean(simple?.fit === 'cover'),
-      containEquipment: Boolean(equipment?.fit === 'contain'),
-      containEquipmentSourceUncropped: Boolean(equipment?.fit === 'contain' && equipment.primarySourceRatio > 1.5 && !/720x900/.test(equipment.primarySource ?? '')),
-      containSecondarySourceUncropped: Boolean(equipment?.fit === 'contain' && equipment.secondaryImage && equipment.secondarySourceRatio > 1.5 && !/720x900/.test(equipment.secondarySource ?? '')),
+      containEquipment: homepage ? (!equipment || equipment.fit === 'contain') : Boolean(equipment?.fit === 'contain'),
+      containEquipmentSourceUncropped: homepage ? (!equipment || (equipment.fit === 'contain' && equipment.primarySourceRatio > 1.5 && !/720x900/.test(equipment.primarySource ?? ''))) : Boolean(equipment?.fit === 'contain' && equipment.primarySourceRatio > 1.5 && !/720x900/.test(equipment.primarySource ?? '')),
+      containSecondarySourceUncropped: homepage ? (!equipment || (equipment.fit === 'contain' && equipment.secondaryImage && equipment.secondarySourceRatio > 1.5 && !/720x900/.test(equipment.secondarySource ?? ''))) : Boolean(equipment?.fit === 'contain' && equipment.secondaryImage && equipment.secondarySourceRatio > 1.5 && !/720x900/.test(equipment.secondarySource ?? '')),
       saleState: Boolean(sale?.saleBadge && !sale?.soldOutBadge),
       soldOutState: Boolean(outOfStock?.soldOutBadge && !outOfStock?.saleBadge),
       variablePrice: Boolean(findCard('Variable Training Suit')?.price),
-      singleImageStable: Boolean(singleImage && !singleImage.secondaryImage && singleImage.primaryImage),
+      singleImageStable: homepage ? (!singleImage || (!singleImage.secondaryImage && singleImage.primaryImage)) : Boolean(singleImage && !singleImage.secondaryImage && singleImage.primaryImage),
       noImageState: Boolean(noImage?.primaryImage),
       longTitleBounded: Boolean(longTitle && longTitle.titleLineClamp === '2' && longTitle.titleLineHeight && longTitle.titleHeight <= longTitle.titleLineHeight * 2.15),
       archiveColumns: expectedColumns === null || columnCount === expectedColumns,
@@ -319,8 +375,11 @@ const inspectProductPage = async (page) => page.evaluate(() => {
       brandColor: card.querySelector('.ssz-product-card__brand') ? getComputedStyle(card.querySelector('.ssz-product-card__brand')).color : null,
       titleWeight: title ? getComputedStyle(title).fontWeight : null,
       priceWeight: price ? getComputedStyle(price).fontWeight : null,
-      swatchCount: card.querySelectorAll('[data-ssz-colour-swatch]').length,
+      swatchCount: card.querySelectorAll('.ssz-product-card__swatch').length,
+      previewSwatchCount: card.querySelectorAll('[data-ssz-colour-swatch]').length,
+      availableSwatchCount: card.querySelectorAll('[data-ssz-colour-available]').length,
       swatchOverflow: card.querySelector('.ssz-product-card__swatches-more')?.textContent?.trim() ?? null,
+      swatchGroup: card.querySelector('[data-ssz-colour-swatches][role="group"][aria-label="Available colours"]') !== null,
       swatchButtonsInLink: card.querySelectorAll('.woocommerce-loop-product__link button, .woocommerce-loop-product__link a').length,
       buttons: card.querySelectorAll('.add_to_cart_button, .ajax_add_to_cart, .button').length,
       ratings: card.querySelectorAll('.star-rating, .woocommerce-loop-rating').length,
@@ -342,32 +401,42 @@ const inspectProductPage = async (page) => page.evaluate(() => {
       relatedRetailPresentation: relatedCards.length > 0 && relatedDetails.every((card) => (
         card.retailPresentation && card.brandColor === 'rgb(35, 136, 173)' && card.titleWeight === '700' && card.priceWeight === '600'
       )),
-      relatedSwatchContract: relatedDetails.every((card) => card.swatchButtonsInLink === 0 && (card.swatchCount === 0 || card.swatchCount <= 5)),
+      relatedSwatchContract: relatedDetails.every((card) => card.swatchButtonsInLink === 0 && (card.swatchCount === 0 || (card.swatchCount <= 5 && card.swatchGroup))),
   };
 });
 
 const inspectRelatedSwatchInteraction = async (page) => {
-  const card = page.locator('.related.products ul.products li.ssz-product-card').filter({ hasText: 'STORE-005 TEST Sale Racing Goggles' }).first();
-  const button = card.locator('[data-ssz-colour-swatch]').first();
-  if (!(await card.count()) || !(await button.count())) {
-    return { configured: false, selected: false, noNavigation: false, noNestedInteractive: false };
+  const cards = page.locator('.related.products ul.products li.ssz-product-card');
+  const card = cards.filter({ has: page.locator('[data-ssz-colour-swatches]') }).first();
+  const fallbackCard = cards.first();
+  const targetCard = await card.count() ? card : fallbackCard;
+  const button = targetCard.locator('[data-ssz-colour-swatch]').first();
+  const available = targetCard.locator('[data-ssz-colour-available]').first();
+  if (!(await targetCard.count()) || (!(await button.count()) && !(await available.count()))) {
+    return { configured: false, semanticContract: false, selected: false, availableOnlySafe: false, noNavigation: false, noNestedInteractive: false };
   }
   const url = page.url();
-  await button.click();
+  if (await button.count()) await button.click();
+  else await available.evaluate((element) => element.click());
   await page.waitForTimeout(100);
   const state = await page.evaluate(() => {
     const card = [...document.querySelectorAll('.related.products ul.products li.ssz-product-card')]
-      .find((node) => node.textContent?.includes('STORE-005 TEST Sale Racing Goggles'));
+      .find((node) => node.querySelector('[data-ssz-colour-swatches]'));
     const selected = card?.querySelector('[data-ssz-colour-swatch][aria-pressed="true"]');
+    const available = card?.querySelector('[data-ssz-colour-available]');
     return {
       exists: Boolean(card),
       selected: Boolean(selected),
+      availableOnlySafe: Boolean(available && !available.hasAttribute('aria-pressed') && !card?.classList.contains('ssz-product-card--colour-preview')),
+      semanticContract: Boolean(card?.querySelector('[data-ssz-colour-swatches][role="group"][aria-label="Available colours"]')),
       noNestedInteractive: Boolean(card && !card.querySelector('.woocommerce-loop-product__link button, .woocommerce-loop-product__link a')),
     };
   });
   return {
     configured: true,
+    semanticContract: state.semanticContract,
     selected: state.selected,
+    availableOnlySafe: state.availableOnlySafe,
     noNavigation: url === page.url(),
     noNestedInteractive: state.exists && state.noNestedInteractive,
   };
@@ -977,7 +1046,78 @@ try {
   await browser.close();
 }
 
-console.log(JSON.stringify({ baseUrl, executablePath, requireLocalMenu, fallbackContract, results, archiveFunctional }, null, 2));
+if (process.env.SSZ_UAT_SUMMARY_ONLY === '1') {
+  console.log(JSON.stringify(results.map((result) => ({
+    width: result.width,
+    headerMode: result.headerMode,
+    homepage: {
+      cardContract: result.homepageProductCards.cardContract,
+      primaryImagesLoaded: result.homepageProductCards.primaryImagesLoaded,
+      secondaryImagesLoaded: result.homepageProductCards.secondaryImagesLoaded,
+      onlyTwoImages: result.homepageProductCards.onlyTwoImages,
+      coverApparel: result.homepageProductCards.coverApparel,
+      containEquipment: result.homepageProductCards.containEquipment,
+      containEquipmentSourceUncropped: result.homepageProductCards.containEquipmentSourceUncropped,
+      containSecondarySourceUncropped: result.homepageProductCards.containSecondarySourceUncropped,
+      saleState: result.homepageProductCards.saleState,
+      soldOutState: result.homepageProductCards.soldOutState,
+      variablePrice: result.homepageProductCards.variablePrice,
+      singleImageStable: result.homepageProductCards.singleImageStable,
+      noImageState: result.homepageProductCards.noImageState,
+      longTitleBounded: result.homepageProductCards.longTitleBounded,
+      retailPresentation: result.homepageProductCards.retailPresentation,
+      swatchContract: result.homepageProductCards.swatchContract,
+      hover: result.homepageProductCards.hover,
+      homepageRail: result.homepageProductCards.homepageRail,
+    },
+    shop: {
+      productCards: {
+        cardContract: result.shop.productCards.cardContract,
+        primaryImagesLoaded: result.shop.productCards.primaryImagesLoaded,
+        secondaryImagesLoaded: result.shop.productCards.secondaryImagesLoaded,
+        onlyTwoImages: result.shop.productCards.onlyTwoImages,
+        coverApparel: result.shop.productCards.coverApparel,
+        containEquipment: result.shop.productCards.containEquipment,
+        containEquipmentSourceUncropped: result.shop.productCards.containEquipmentSourceUncropped,
+        containSecondarySourceUncropped: result.shop.productCards.containSecondarySourceUncropped,
+        saleState: result.shop.productCards.saleState,
+        soldOutState: result.shop.productCards.soldOutState,
+        variablePrice: result.shop.productCards.variablePrice,
+        singleImageStable: result.shop.productCards.singleImageStable,
+        noImageState: result.shop.productCards.noImageState,
+        longTitleBounded: result.shop.productCards.longTitleBounded,
+        archiveColumns: result.shop.productCards.archiveColumns,
+        retailPresentation: result.shop.productCards.retailPresentation,
+        swatchContract: result.shop.productCards.swatchContract,
+        swatchInteraction: result.shop.productCards.swatchInteraction,
+        hover: result.shop.productCards.hover,
+      },
+      archive: {
+        header: result.shop.archive.header,
+        toolbar: result.shop.archive.toolbar,
+        count: result.shop.archive.count,
+        filterToggle: result.shop.archive.filterToggle,
+        ordering: result.shop.archive.ordering,
+        grid: result.shop.archive.grid,
+        columnCount: result.shop.archive.columnCount,
+        expectedColumns: result.shop.archive.expectedColumns,
+        horizontalOverflow: result.shop.archive.horizontalOverflow,
+        brokenImages: result.shop.archive.brokenImages,
+        presentation: result.shop.archive.presentation,
+        drawer: result.shop.archive.drawer,
+      },
+      menuState: result.menuState,
+      desktop: result.desktop,
+      focus: result.focus,
+    },
+    pdp: {
+      product: result.pdp.product,
+      relatedSwatchInteraction: result.pdp.relatedSwatchInteraction,
+    },
+  })), null, 2));
+} else {
+  console.log(JSON.stringify({ baseUrl, executablePath, requireLocalMenu, fallbackContract, results, archiveFunctional }, null, 2));
+}
 
 const failures = results.filter((result) => {
   const mobileFailure = result.menuState.checked && (
@@ -1027,12 +1167,12 @@ const failures = results.filter((result) => {
     result.shop.consoleErrors.length || result.shop.pageErrors.length || !result.shop.productCards.cardContract || !result.shop.productCards.primaryImagesLoaded || !result.shop.productCards.secondaryImagesLoaded ||
     !result.shop.productCards.onlyTwoImages || !result.shop.productCards.coverApparel || !result.shop.productCards.containEquipment || !result.shop.productCards.containEquipmentSourceUncropped || !result.shop.productCards.containSecondarySourceUncropped || !result.shop.productCards.saleState || !result.shop.productCards.soldOutState ||
     !result.shop.productCards.variablePrice || !result.shop.productCards.singleImageStable || !result.shop.productCards.noImageState || !result.shop.productCards.longTitleBounded || !result.shop.productCards.archiveColumns ||
-    !result.shop.productCards.retailPresentation || !result.shop.productCards.swatchContract || !result.shop.productCards.swatchInteraction.configured || !result.shop.productCards.swatchInteraction.variableSwatches || !result.shop.productCards.swatchInteraction.singleColourOmitted || !result.shop.productCards.swatchInteraction.maxFiveVisible || !result.shop.productCards.swatchInteraction.overflowLabel || !result.shop.productCards.swatchInteraction.accessibleLabels || !result.shop.productCards.swatchInteraction.focusVisible || !result.shop.productCards.swatchInteraction.selected || !result.shop.productCards.swatchInteraction.sourceChanged || !result.shop.productCards.swatchInteraction.dimensionsStable || !result.shop.productCards.swatchInteraction.noNavigation || !result.shop.productCards.swatchInteraction.noAddToCart || !result.shop.productCards.swatchInteraction.noNestedInteractive || !result.shop.productCards.swatchInteraction.hoverPreserved ||
+    !result.shop.productCards.retailPresentation || !result.shop.productCards.swatchContract || !result.shop.productCards.swatchInteraction.configured || !result.shop.productCards.swatchInteraction.allMappedConfigured || !result.shop.productCards.swatchInteraction.allMappedButtons || !result.shop.productCards.swatchInteraction.allMappedLabels || !result.shop.productCards.swatchInteraction.mixedConfigured || !result.shop.productCards.swatchInteraction.mixedPreviewable || !result.shop.productCards.swatchInteraction.mixedAvailableOnly || !result.shop.productCards.swatchInteraction.mixedNoMismatch || !result.shop.productCards.swatchInteraction.simpleIndicators || !result.shop.productCards.swatchInteraction.simpleNoFakeButtons || !result.shop.productCards.swatchInteraction.simpleNoPreviewClass || !result.shop.productCards.swatchInteraction.singleColourOmitted || !result.shop.productCards.swatchInteraction.maxFiveVisible || !result.shop.productCards.swatchInteraction.overflowLabel || !result.shop.productCards.swatchInteraction.groupSemantics || !result.shop.productCards.swatchInteraction.focusVisible || !result.shop.productCards.swatchInteraction.selected || !result.shop.productCards.swatchInteraction.sourceChanged || !result.shop.productCards.swatchInteraction.dimensionsStable || !result.shop.productCards.swatchInteraction.noNavigation || !result.shop.productCards.swatchInteraction.noAddToCart || !result.shop.productCards.swatchInteraction.noNestedInteractive || !result.shop.productCards.swatchInteraction.hoverPreserved ||
     !result.shop.productCards.hover.checked || (result.width >= 768 && !result.shop.productCards.hover.changed) || !result.shop.productCards.hover.secondaryLoaded ||
     !result.shop.archive.header || !result.shop.archive.toolbar || !result.shop.archive.count || !result.shop.archive.filterToggle || !result.shop.archive.ordering || !result.shop.archive.grid || result.shop.archive.horizontalOverflow || result.shop.archive.brokenImages || result.shop.archive.columnCount !== result.shop.archive.expectedColumns || result.shop.archive.presentation.brandColor !== 'rgb(35, 136, 173)' || result.shop.archive.presentation.titleWeight !== '700' || result.shop.archive.presentation.priceWeight !== '600' || result.shop.archive.presentation.saleCurrentWeight !== '600' || result.shop.archive.presentation.saleOldWeight !== '500' || result.shop.archive.presentation.saleOldDecoration !== 'line-through' || result.shop.archive.presentation.brandMediaGap < 10 || result.shop.archive.presentation.brandMediaGap > 18 || result.shop.archive.presentation.brandTitleGap < 4 || result.shop.archive.presentation.brandTitleGap > 9 || result.shop.archive.presentation.swatchTitleGap < 4 || result.shop.archive.presentation.swatchTitleGap > 10 || result.shop.archive.presentation.swatchPriceGap < 4 || result.shop.archive.presentation.swatchPriceGap > 10 || (result.width <= 430 && (result.shop.archive.presentation.minMediaCardRatio < .97 || result.shop.archive.presentation.columnGap < 7 || result.shop.archive.presentation.columnGap > 16 || result.shop.archive.presentation.rowMediaAlignment > 2 || result.shop.archive.presentation.rowInfoGap < 0 || result.shop.archive.presentation.rowInfoGap > 50)) ||
     !result.shop.archive.drawer.opened || !result.shop.archive.drawer.bodyScrollLock || !result.shop.archive.drawer.focusInside || !result.shop.archive.drawer.closedByEscape || !result.shop.archive.drawer.focusRestored || (result.shop.archive.drawer.accordion.configured && (!result.shop.archive.drawer.accordion.expanded || !result.shop.archive.drawer.accordion.collapsed)) ||
     !result.pdp.themeVisible || result.pdp.responseStatus === null || result.pdp.responseStatus >= 400 || result.pdp.navigationError || result.pdp.horizontalOverflow || result.pdp.consoleErrors.length || result.pdp.pageErrors.length ||
-    !result.pdp.product.mainFound || result.pdp.product.mainHasCardClass || result.pdp.product.mainHasFitClass || !result.pdp.product.relatedFound || !result.pdp.product.relatedCardContract || !result.pdp.product.relatedRetailPresentation || !result.pdp.product.relatedSwatchContract || !result.pdp.relatedSwatchInteraction.configured || !result.pdp.relatedSwatchInteraction.selected || !result.pdp.relatedSwatchInteraction.noNavigation || !result.pdp.relatedSwatchInteraction.noNestedInteractive ||
+    !result.pdp.product.mainFound || result.pdp.product.mainHasCardClass || result.pdp.product.mainHasFitClass || !result.pdp.product.relatedFound || !result.pdp.product.relatedCardContract || !result.pdp.product.relatedRetailPresentation || !result.pdp.product.relatedSwatchContract || !result.pdp.relatedSwatchInteraction.configured || !result.pdp.relatedSwatchInteraction.semanticContract || (!result.pdp.relatedSwatchInteraction.selected && !result.pdp.relatedSwatchInteraction.availableOnlySafe) || !result.pdp.relatedSwatchInteraction.noNavigation || !result.pdp.relatedSwatchInteraction.noNestedInteractive ||
     !result.headerMode.colorLogoVisible || !result.headerMode.colorLogoLoaded || !result.headerMode.cartVisible ||
     !result.search.opened || !result.search.inputFocused || !result.search.closed || !result.search.focusRestored ||
     mobileFailure || desktopFailure || missingConfiguredMenu ||

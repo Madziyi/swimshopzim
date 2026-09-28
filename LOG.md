@@ -236,3 +236,17 @@ The full ten-width Playwright UAT passed at 360, 390, 430, 768, 1024, 1120, 1121
 HANDOFF
 STORE-006 related-card and colour-preview work is complete and ready for Sol review. Filter layout, query logic, category navigation, sorting, pagination, archive geometry and PDP variation controls remain unchanged. STORE-007 has not started and no merge has been performed.
 
+## 2026-09-27 — STORE-006 final swatch correctness correction
+
+IMPLEMENTATION
+
+Corrected the swatch contract so only terms with trustworthy variation-image data render as `Preview …` buttons. Unmapped variable colours and simple multi-colour terms now render as non-focusable indicators with accessible `Available in …` text; they do not expose `aria-pressed`, mutate images or activate colour-preview hover suppression. Added `role="group"` and an accessible `Available colours` name to the swatch row, hardened JavaScript against stale/malformed unmapped controls, and retained the five-item plus `+N` display limit.
+
+VERIFICATION
+
+Added Local-only all-mapped and mixed-variable fixtures, then passed the full visual UAT at 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px. UAT verified mapped buttons and image changes, mixed Navy/Red indicator safety, simple indicator-only cards with normal hover, group semantics, focus, no nested interactive controls, no navigation/cart/image mismatch, related-product parity, homepage unchanged, archive filter/sort/pagination regressions and no console/page errors. PHP/JavaScript syntax and diff checks passed.
+
+HANDOFF
+
+STORE-006 final swatch correction is complete and ready for Sol review. Previous approved commit: `69c77779b251565bede301ec46693e60cb3f98d5`. STORE-007 has not started and no merge has been performed.
+

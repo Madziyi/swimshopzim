@@ -261,14 +261,20 @@ function ssz_loop_product_colour_swatches() {
 	$remaining    = count( $terms ) - count( $visible_terms );
 	$variation_data = ssz_product_colour_variation_data( $product );
 
-	echo '<div class="ssz-product-card__swatches" data-ssz-colour-swatches data-ssz-colour-variations="' . esc_attr( wp_json_encode( $variation_data ) ) . '" aria-label="' . esc_attr__( 'Available colours', 'swimshop-zimbabwe' ) . '">';
+	echo '<div class="ssz-product-card__swatches" data-ssz-colour-swatches data-ssz-colour-variations="' . esc_attr( wp_json_encode( $variation_data ) ) . '" role="group" aria-label="' . esc_attr__( 'Available colours', 'swimshop-zimbabwe' ) . '">';
 
 	foreach ( $visible_terms as $term ) {
-		$value       = ssz_product_colour_value( $term );
-		$style       = $value ? ' style="--ssz-swatch-color:' . esc_attr( $value ) . '"' : '';
-		$unknown     = $value ? '' : ' ssz-product-card__swatch--unknown';
+		$value         = ssz_product_colour_value( $term );
+		$style         = $value ? ' style="--ssz-swatch-color:' . esc_attr( $value ) . '"' : '';
+		$unknown       = $value ? '' : ' ssz-product-card__swatch--unknown';
+		$variation     = $variation_data[ $term->slug ] ?? array();
+		$previewable   = is_array( $variation ) && ! empty( $variation['src'] );
 
-		echo '<button class="ssz-product-card__swatch' . esc_attr( $unknown ) . '" type="button" data-ssz-colour-swatch data-colour-slug="' . esc_attr( $term->slug ) . '" aria-label="' . esc_attr( sprintf( __( 'Preview %s', 'swimshop-zimbabwe' ), $term->name ) ) . '" aria-pressed="false"' . $style . '><span aria-hidden="true"></span></button>';
+		if ( $previewable ) {
+			echo '<button class="ssz-product-card__swatch' . esc_attr( $unknown ) . '" type="button" data-ssz-colour-swatch data-colour-slug="' . esc_attr( $term->slug ) . '" aria-label="' . esc_attr( sprintf( __( 'Preview %s', 'swimshop-zimbabwe' ), $term->name ) ) . '" aria-pressed="false"' . $style . '><span aria-hidden="true"></span></button>';
+		} else {
+			echo '<span class="ssz-product-card__swatch ssz-product-card__swatch--available' . esc_attr( $unknown ) . '" data-ssz-colour-available data-colour-slug="' . esc_attr( $term->slug ) . '"' . $style . '><span aria-hidden="true"></span><span class="screen-reader-text">' . esc_html( sprintf( __( 'Available in %s', 'swimshop-zimbabwe' ), $term->name ) ) . '</span></span>';
+		}
 	}
 
 	if ( $remaining > 0 ) {
