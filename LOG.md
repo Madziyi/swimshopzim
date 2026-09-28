@@ -250,3 +250,14 @@ HANDOFF
 
 STORE-006 final swatch correction is complete and ready for Sol review. Previous approved commit: `69c77779b251565bede301ec46693e60cb3f98d5`. STORE-007 has not started and no merge has been performed.
 
+## 2026-09-28 — STORE-006 Sol acceptance
+
+VERIFICATION
+Sol reviewed the complete STORE-006 branch through commit `33b968d8afa1e0d7ac46b0241f5531349a94670e`. Review covered the hook-first Shop/category/brand archive framework, contextual headers and category rails, server-rendered GET filters, active chips, native sorting and pagination, accessible filter drawer, archive empty state, refined PLP card geometry, Related Products parity and native `pa_colour` swatches.
+
+VERIFICATION
+The final correction cleanly separates previewable colour swatches from available-only colour indicators: only trustworthy variation-image mappings render interactive Preview buttons, while unmapped colours expose non-interactive accessible “Available in …” indicators. The swatch row has group semantics, JavaScript ignores stale/unmapped preview controls, homepage cards remain unchanged, PDP variation controls remain native, and the complete ten-width automated UAT plus STORE-003/004/005 regressions passed.
+
+DECISION
+STORE-006 is accepted. Pull request #5 was merged to `main` at merge commit `45e0a2767f0cc8cde48b3f2ef90127f4434ad34f`. STORE-007 — Product Page becomes the next planned initiative.
+
