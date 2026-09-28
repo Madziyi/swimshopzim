@@ -51,6 +51,7 @@
     if (!menuToggle || !mobileNav) return;
 
     document.dispatchEvent(new CustomEvent('ssz:close-search'));
+		document.dispatchEvent(new CustomEvent('ssz:close-filters'));
     closeDesktopMenus();
     resetMobilePanels();
     mobileNav.hidden = false;
@@ -138,12 +139,14 @@
 
 		item.addEventListener('mouseenter', () => {
 			document.dispatchEvent(new CustomEvent('ssz:close-search'));
+			document.dispatchEvent(new CustomEvent('ssz:close-filters'));
 			closeDesktopMenus(item);
 			item.classList.remove('ssz-menu-dismissed');
 		});
 		item.addEventListener('focusin', (event) => {
 			if (event.target === toggle || item.classList.contains('ssz-menu-dismissed')) return;
 			document.dispatchEvent(new CustomEvent('ssz:close-search'));
+			document.dispatchEvent(new CustomEvent('ssz:close-filters'));
 			closeDesktopMenus(item);
 			item.classList.add('is-open');
 			toggle.setAttribute('aria-expanded', 'true');
@@ -152,6 +155,7 @@
 		toggle.addEventListener('click', () => {
 			const isOpen = item.classList.contains('is-open');
 			document.dispatchEvent(new CustomEvent('ssz:close-search'));
+			document.dispatchEvent(new CustomEvent('ssz:close-filters'));
 			closeDesktopMenus(item);
 			item.classList.remove('ssz-menu-dismissed');
 			item.classList.toggle('is-open', !isOpen);

@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'SSZ_THEME_VERSION', '0.5.0' );
+define( 'SSZ_THEME_VERSION', '0.6.0' );
 define( 'SSZ_THEME_DIR', get_template_directory() );
 define( 'SSZ_THEME_URI', get_template_directory_uri() );
 
@@ -23,6 +23,7 @@ $ssz_includes = array(
 	'/inc/accessibility.php',
 	'/inc/woocommerce/setup.php',
 	'/inc/woocommerce/product-loop.php',
+	'/inc/woocommerce/archive.php',
 );
 
 foreach ( $ssz_includes as $ssz_file ) {

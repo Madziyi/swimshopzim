@@ -33,6 +33,10 @@ STORE-004 uses the native Customizer panel `SwimShop Homepage` with separate Her
 
 STORE-005 uses a reusable hook-first WooCommerce product-card system shared by homepage rails, shop/category/brand archives and related loops. Local-only `STORE-005 TEST` fixtures exercise primary/secondary media, SALE, SOLD OUT, variable pricing, equipment contain mode, single-image stability, placeholder media and long titles. The fixture seeder and generated uploads remain local runtime state and must not be committed or exported.
 
+STORE-006 adds the shared Shop/category/brand archive framework through WooCommerce hooks. The archive header and approved category rail are theme-owned, while the native product grid, sorting and pagination remain WooCommerce-owned. Filters are GET-based and server-rendered, covering native brand/size/colour contracts plus category, price and in-stock availability. The filter drawer is progressive enhancement only: without JavaScript the GET form remains usable; JavaScript adds focus management, accordions, overlay coordination and comma-separated multi-select serialization. Local-only attributes and category assignments are seeded in the runtime for UAT and must not be exported.
+
+The STORE-006 visual refinement uses a reusable retail-card presentation for archives and related products: brand text uses a light SwimShop blue, cards fill their WooCommerce grid tracks, titles use bold emphasis, prices use a 600-level weight, and image/text/row spacing is tuned for a compact PLP rhythm. Global `pa_colour` terms render up to five swatch items plus `+N`; variable cards expose `Preview …` buttons only for mapped variation images, while unmapped variable colours and simple multi-colour cards show non-interactive `Available in …` indicators. Homepage rails remain on their existing shared-card rules.
+
 ## Visual UAT
 
 With the Local site running and the custom theme active, install the development dependency and run the exact-width browser harness:
@@ -43,6 +47,8 @@ npm run visual-uat
 ```
 
 The harness uses an installed Chrome or Edge executable, checks exact widths `360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440, 1920`, and writes ignored screenshots to `artifacts/uat/`. Set `SSZ_BROWSER_PATH` when the browser is not in a standard installation path. Set `SSZ_REQUIRE_LOCAL_MENU=1` to fail when the local WordPress Primary Navigation has no configured child menu for mega-menu/drilldown checks.
+
+For archive UAT, the Local runtime must have WooCommerce active and Coming Soon disabled locally. The STORE-006 fixture catalog includes the native Arena, Speedo and Spurt brands, approved category hierarchy, `pa_size` and `pa_colour` terms, stock variation and popularity values. Pagination checks may temporarily set `woocommerce_catalog_rows=1`; restore the normal three-row setting before ending the session.
 
 ## Linting
 

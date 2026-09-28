@@ -77,7 +77,7 @@ const inspectProductCards = async (page, { homepage = false, expectedColumns = n
   const hoverCard = cardsLocator.filter({ hasText: 'STORE-005 TEST Simple Performance Suit' }).first();
   if (await hoverCard.count()) {
     const hoverMedia = hoverCard.locator('.ssz-product-card__media');
-    await hoverMedia.evaluate((element) => element.scrollIntoView({ block: 'center', inline: 'nearest' }));
+    await hoverMedia.scrollIntoViewIfNeeded();
     const hoverBox = await hoverMedia.boundingBox();
     if (hoverBox) {
       const hoverY = hoverBox.y < 140 ? hoverBox.y + hoverBox.height - 10 : hoverBox.y + hoverBox.height / 2;
@@ -96,6 +96,150 @@ const inspectProductCards = async (page, { homepage = false, expectedColumns = n
       };
     });
     await page.mouse.move(1, 1);
+  }
+
+  let swatchInteraction = {
+    configured: false,
+    allMappedConfigured: false,
+    allMappedButtons: false,
+    allMappedLabels: false,
+    mixedConfigured: false,
+    mixedPreviewable: false,
+    mixedAvailableOnly: false,
+    mixedNoMismatch: false,
+    simpleIndicators: false,
+    simpleNoFakeButtons: false,
+    simpleNoPreviewClass: false,
+    simpleHoverPreserved: false,
+    singleColourOmitted: false,
+    maxFiveVisible: false,
+    overflowLabel: false,
+    groupSemantics: false,
+    focusVisible: false,
+    selected: false,
+    sourceChanged: false,
+    dimensionsStable: false,
+    noNavigation: false,
+    noAddToCart: false,
+    noNestedInteractive: false,
+    hoverPreserved: false,
+  };
+
+  if (!homepage) {
+    const allMappedCard = cardsLocator.filter({ hasText: 'STORE-006 TEST All Mapped Colour Suit' }).first();
+    const mixedCard = cardsLocator.filter({ hasText: 'STORE-006 TEST Mixed Colour Suit' }).first();
+    const overflowCard = cardsLocator.filter({ hasText: 'STORE-005 TEST Variable Training Suit' }).first();
+    const simpleMultiCard = cardsLocator.filter({ hasText: 'STORE-005 TEST Simple Performance Suit' }).first();
+    const singleColourCard = cardsLocator.filter({ hasText: 'STORE-005 TEST Single Image Towel' }).first();
+    const allMappedButtons = allMappedCard.locator('[data-ssz-colour-swatch]');
+    const mixedSwatches = mixedCard.locator('.ssz-product-card__swatch');
+    const mixedAvailable = mixedCard.locator('[data-ssz-colour-available][data-colour-slug="red"]');
+    const simpleIndicators = simpleMultiCard.locator('[data-ssz-colour-available]');
+    const visibleOverflow = overflowCard.locator('.ssz-product-card__swatches-more');
+    swatchInteraction.configured = await allMappedCard.count() > 0 && await mixedCard.count() > 0 && await simpleMultiCard.count() > 0;
+    swatchInteraction.allMappedConfigured = await allMappedCard.count() > 0;
+    swatchInteraction.allMappedButtons = await allMappedButtons.count() === 3 && await allMappedCard.locator('[data-ssz-colour-available]').count() === 0;
+    swatchInteraction.allMappedLabels = await allMappedButtons.evaluateAll((items) => items.every((item) => item.getAttribute('aria-label')?.startsWith('Preview ')));
+    swatchInteraction.mixedConfigured = await mixedCard.count() > 0;
+    swatchInteraction.mixedPreviewable = await mixedCard.locator('[data-ssz-colour-swatch][data-colour-slug="navy"]').count() === 1;
+    swatchInteraction.mixedAvailableOnly = await mixedAvailable.count() === 1 && await mixedAvailable.evaluate((item) => item.textContent?.includes('Available in Red') && !item.hasAttribute('aria-pressed') && item.tabIndex < 0);
+    swatchInteraction.simpleIndicators = await simpleIndicators.count() >= 2;
+    swatchInteraction.simpleNoFakeButtons = await simpleMultiCard.locator('[data-ssz-colour-swatch]').count() === 0 && await simpleMultiCard.locator('[aria-label^="Preview "]').count() === 0;
+    swatchInteraction.singleColourOmitted = await singleColourCard.locator('[data-ssz-colour-swatches]').count() === 0;
+    swatchInteraction.maxFiveVisible = await overflowCard.locator('.ssz-product-card__swatch').count() <= 5;
+    swatchInteraction.overflowLabel = await visibleOverflow.count() === 1 && /^\+\d+$/.test((await visibleOverflow.innerText()).trim());
+    swatchInteraction.groupSemantics = await Promise.all([allMappedCard, mixedCard, simpleMultiCard].map(async (card) => {
+      const group = card.locator('[data-ssz-colour-swatches][role="group"][aria-label="Available colours"]');
+      return await group.count() === 1;
+    })).then((values) => values.every(Boolean));
+    swatchInteraction.noNestedInteractive = await Promise.all([allMappedCard, mixedCard, simpleMultiCard].map(async (card) => (
+      await card.locator('.woocommerce-loop-product__link button, .woocommerce-loop-product__link a').count() === 0
+    ))).then((values) => values.every(Boolean));
+
+    const allMappedMedia = allMappedCard.locator('.ssz-product-card__media');
+    const beforeState = await page.evaluate(() => {
+      const card = [...document.querySelectorAll('li.ssz-product-card')].find((node) => node.textContent?.includes('STORE-006 TEST All Mapped Colour Suit'));
+      const primaryImage = card?.querySelector('.ssz-product-card__image--primary');
+      const mediaFrame = card?.querySelector('.ssz-product-card__media');
+      const mediaRect = mediaFrame?.getBoundingClientRect();
+      return { source: primaryImage?.getAttribute('src') ?? null, width: mediaRect?.width ?? null, height: mediaRect?.height ?? null };
+    });
+    const beforeUrl = page.url();
+    const navy = allMappedCard.locator('[data-ssz-colour-swatch][data-colour-slug="navy"]');
+    if (await navy.count()) {
+      await navy.click();
+      await page.waitForTimeout(120);
+      await page.mouse.click(1, 1);
+      for (let attempt = 0; attempt < 80; attempt += 1) {
+        await page.keyboard.press('Tab');
+        const focusState = await navy.evaluate((element) => ({
+          active: document.activeElement === element,
+          visible: element.matches(':focus-visible') && getComputedStyle(element).outlineWidth === '3px',
+        }));
+        if (focusState.active) {
+          swatchInteraction.focusVisible = focusState.visible;
+          break;
+        }
+      }
+      const afterState = await page.evaluate(() => {
+        const card = [...document.querySelectorAll('li.ssz-product-card')].find((node) => node.textContent?.includes('STORE-006 TEST All Mapped Colour Suit'));
+        const primaryImage = card?.querySelector('.ssz-product-card__image--primary');
+        const mediaFrame = card?.querySelector('.ssz-product-card__media');
+        const mediaRect = mediaFrame?.getBoundingClientRect();
+        const selected = card?.querySelector('[data-ssz-colour-swatch][data-colour-slug="navy"]');
+        return {
+          source: primaryImage?.getAttribute('src') ?? null,
+          width: mediaRect?.width ?? null,
+          height: mediaRect?.height ?? null,
+          selected: selected?.getAttribute('aria-pressed') === 'true',
+          exists: Boolean(card),
+          hasPreviewClass: Boolean(card?.classList.contains('ssz-product-card--colour-preview')),
+          noAddToCart: Boolean(card && !card.querySelector('.add_to_cart_button, .ajax_add_to_cart, .button')),
+          noNestedInteractive: Boolean(card && !card.querySelector('.woocommerce-loop-product__link button, .woocommerce-loop-product__link a')),
+        };
+      });
+      swatchInteraction.selected = afterState.selected;
+      swatchInteraction.sourceChanged = Boolean(beforeState.source && afterState.source && beforeState.source !== afterState.source);
+      swatchInteraction.dimensionsStable = Boolean(beforeState.width && afterState.width && beforeState.width === afterState.width && beforeState.height === afterState.height);
+      swatchInteraction.noNavigation = beforeUrl === page.url();
+      swatchInteraction.noAddToCart = afterState.noAddToCart;
+      swatchInteraction.noNestedInteractive = swatchInteraction.noNestedInteractive && afterState.noNestedInteractive;
+      if (afterState.exists && swatchInteraction.noNavigation) {
+        await allMappedMedia.hover();
+        await page.waitForTimeout(100);
+        swatchInteraction.hoverPreserved = await page.evaluate(() => {
+          const card = [...document.querySelectorAll('li.ssz-product-card')].find((node) => node.textContent?.includes('STORE-006 TEST All Mapped Colour Suit'));
+          const primaryImage = card?.querySelector('.ssz-product-card__image--primary');
+          const secondaryImage = card?.querySelector('.ssz-product-card__image--secondary');
+          return Boolean(card && primaryImage && getComputedStyle(primaryImage).opacity === '1' && (!secondaryImage || getComputedStyle(secondaryImage).opacity === '0'));
+        });
+      }
+      await page.mouse.move(1, 1);
+    }
+
+    if (await mixedCard.count() && await mixedAvailable.count()) {
+      const mixedNavy = mixedCard.locator('[data-ssz-colour-swatch][data-colour-slug="navy"]');
+      if (await mixedNavy.count()) {
+        await mixedNavy.click();
+        await page.waitForTimeout(120);
+        const mixedBefore = await mixedCard.locator('.ssz-product-card__image--primary').getAttribute('src');
+        await mixedAvailable.evaluate((element) => element.click());
+        await page.waitForTimeout(80);
+        const mixedAfter = await mixedCard.locator('.ssz-product-card__image--primary').getAttribute('src');
+        swatchInteraction.mixedNoMismatch = mixedBefore === mixedAfter && await mixedCard.locator('[data-ssz-colour-swatch][data-colour-slug="red"]').count() === 0 && await mixedCard.locator('[data-ssz-colour-available][data-colour-slug="red"][aria-pressed]').count() === 0;
+      }
+    }
+
+    if (await simpleMultiCard.count()) {
+      const simpleBefore = await simpleMultiCard.evaluate((card) => card.classList.contains('ssz-product-card--colour-preview'));
+      const simpleIndicator = simpleMultiCard.locator('[data-ssz-colour-available]').first();
+      if (await simpleIndicator.count()) {
+        await simpleIndicator.evaluate((element) => element.click());
+        await page.waitForTimeout(80);
+      }
+      swatchInteraction.simpleNoPreviewClass = simpleBefore === false && await simpleMultiCard.evaluate((card) => !card.classList.contains('ssz-product-card--colour-preview'));
+      swatchInteraction.simpleHoverPreserved = hover.checked && hover.changed;
+    }
   }
 
   const cardResult = await page.evaluate(({ homepage, expectedColumns }) => {
@@ -140,6 +284,13 @@ const inspectProductCards = async (page, { homepage = false, expectedColumns = n
         nestedAnchors: card.querySelectorAll('a a').length,
         hasLoopButton: Boolean(card.querySelector('.add_to_cart_button, .ajax_add_to_cart, .button')),
         hasRating: Boolean(card.querySelector('.star-rating, .woocommerce-loop-rating')),
+        retailPresentation: card.classList.contains('ssz-product-card--retail'),
+        swatchCount: card.querySelectorAll('.ssz-product-card__swatch').length,
+        previewSwatchCount: card.querySelectorAll('[data-ssz-colour-swatch]').length,
+        availableSwatchCount: card.querySelectorAll('[data-ssz-colour-available]').length,
+        swatchOverflow: card.querySelector('.ssz-product-card__swatches-more')?.textContent?.trim() ?? null,
+        swatchGroup: card.querySelector('[data-ssz-colour-swatches][role="group"][aria-label="Available colours"]') !== null,
+        swatchButtonsInLink: card.querySelectorAll('.woocommerce-loop-product__link button, .woocommerce-loop-product__link a').length,
       };
     });
     const findCard = (needle) => cardDetails.find((card) => card.name.includes(needle));
@@ -181,23 +332,25 @@ const inspectProductCards = async (page, { homepage = false, expectedColumns = n
       secondaryImagesLoaded: cardDetails.filter((card) => card.secondaryImage).every((card) => card.secondaryLoaded),
       onlyTwoImages: cardDetails.every((card) => card.imageCount <= 2),
       coverApparel: Boolean(simple?.fit === 'cover'),
-      containEquipment: Boolean(equipment?.fit === 'contain'),
-      containEquipmentSourceUncropped: Boolean(equipment?.fit === 'contain' && equipment.primarySourceRatio > 1.5 && !/720x900/.test(equipment.primarySource ?? '')),
-      containSecondarySourceUncropped: Boolean(equipment?.fit === 'contain' && equipment.secondaryImage && equipment.secondarySourceRatio > 1.5 && !/720x900/.test(equipment.secondarySource ?? '')),
+      containEquipment: homepage ? (!equipment || equipment.fit === 'contain') : Boolean(equipment?.fit === 'contain'),
+      containEquipmentSourceUncropped: homepage ? (!equipment || (equipment.fit === 'contain' && equipment.primarySourceRatio > 1.5 && !/720x900/.test(equipment.primarySource ?? ''))) : Boolean(equipment?.fit === 'contain' && equipment.primarySourceRatio > 1.5 && !/720x900/.test(equipment.primarySource ?? '')),
+      containSecondarySourceUncropped: homepage ? (!equipment || (equipment.fit === 'contain' && equipment.secondaryImage && equipment.secondarySourceRatio > 1.5 && !/720x900/.test(equipment.secondarySource ?? ''))) : Boolean(equipment?.fit === 'contain' && equipment.secondaryImage && equipment.secondarySourceRatio > 1.5 && !/720x900/.test(equipment.secondarySource ?? '')),
       saleState: Boolean(sale?.saleBadge && !sale?.soldOutBadge),
       soldOutState: Boolean(outOfStock?.soldOutBadge && !outOfStock?.saleBadge),
       variablePrice: Boolean(findCard('Variable Training Suit')?.price),
-      singleImageStable: Boolean(singleImage && !singleImage.secondaryImage && singleImage.primaryImage),
+      singleImageStable: homepage ? (!singleImage || (!singleImage.secondaryImage && singleImage.primaryImage)) : Boolean(singleImage && !singleImage.secondaryImage && singleImage.primaryImage),
       noImageState: Boolean(noImage?.primaryImage),
       longTitleBounded: Boolean(longTitle && longTitle.titleLineClamp === '2' && longTitle.titleLineHeight && longTitle.titleHeight <= longTitle.titleLineHeight * 2.15),
       archiveColumns: expectedColumns === null || columnCount === expectedColumns,
       columnCount,
       homepageRail: !homepage || (railState.length === 2 && railState.every((rail) => rail.display === 'flex' && rail.overflowX === 'auto' && rail.scrollWidth >= rail.clientWidth)),
+      retailPresentation: homepage ? cardDetails.every((card) => !card.retailPresentation) : cardDetails.every((card) => card.retailPresentation),
+      swatchContract: homepage ? cardDetails.every((card) => card.swatchCount === 0) : cardDetails.every((card) => card.swatchButtonsInLink === 0),
       railState,
     };
   }, { homepage, expectedColumns });
 
-  return { ...cardResult, hover };
+  return { ...cardResult, hover, swatchInteraction };
 };
 
 const inspectProductPage = async (page) => page.evaluate(() => {
@@ -218,6 +371,16 @@ const inspectProductPage = async (page) => page.evaluate(() => {
       price: Boolean(price),
       aspectRatio: rect && rect.height ? Number((rect.width / rect.height).toFixed(3)) : null,
       anchorCount: card.querySelectorAll('a').length,
+      retailPresentation: card.classList.contains('ssz-product-card--retail'),
+      brandColor: card.querySelector('.ssz-product-card__brand') ? getComputedStyle(card.querySelector('.ssz-product-card__brand')).color : null,
+      titleWeight: title ? getComputedStyle(title).fontWeight : null,
+      priceWeight: price ? getComputedStyle(price).fontWeight : null,
+      swatchCount: card.querySelectorAll('.ssz-product-card__swatch').length,
+      previewSwatchCount: card.querySelectorAll('[data-ssz-colour-swatch]').length,
+      availableSwatchCount: card.querySelectorAll('[data-ssz-colour-available]').length,
+      swatchOverflow: card.querySelector('.ssz-product-card__swatches-more')?.textContent?.trim() ?? null,
+      swatchGroup: card.querySelector('[data-ssz-colour-swatches][role="group"][aria-label="Available colours"]') !== null,
+      swatchButtonsInLink: card.querySelectorAll('.woocommerce-loop-product__link button, .woocommerce-loop-product__link a').length,
       buttons: card.querySelectorAll('.add_to_cart_button, .ajax_add_to_cart, .button').length,
       ratings: card.querySelectorAll('.star-rating, .woocommerce-loop-rating').length,
     };
@@ -235,11 +398,179 @@ const inspectProductPage = async (page) => page.evaluate(() => {
       card.aspectRatio !== null && Math.abs(card.aspectRatio - .8) < .03 && card.anchorCount === 1 &&
       card.buttons === 0 && card.ratings === 0
     )),
+      relatedRetailPresentation: relatedCards.length > 0 && relatedDetails.every((card) => (
+        card.retailPresentation && card.brandColor === 'rgb(35, 136, 173)' && card.titleWeight === '700' && card.priceWeight === '600'
+      )),
+      relatedSwatchContract: relatedDetails.every((card) => card.swatchButtonsInLink === 0 && (card.swatchCount === 0 || (card.swatchCount <= 5 && card.swatchGroup))),
   };
 });
 
+const inspectRelatedSwatchInteraction = async (page) => {
+  const cards = page.locator('.related.products ul.products li.ssz-product-card');
+  const card = cards.filter({ has: page.locator('[data-ssz-colour-swatches]') }).first();
+  const fallbackCard = cards.first();
+  const targetCard = await card.count() ? card : fallbackCard;
+  const button = targetCard.locator('[data-ssz-colour-swatch]').first();
+  const available = targetCard.locator('[data-ssz-colour-available]').first();
+  if (!(await targetCard.count()) || (!(await button.count()) && !(await available.count()))) {
+    return { configured: false, semanticContract: false, selected: false, availableOnlySafe: false, noNavigation: false, noNestedInteractive: false };
+  }
+  const url = page.url();
+  if (await button.count()) await button.click();
+  else await available.evaluate((element) => element.click());
+  await page.waitForTimeout(100);
+  const state = await page.evaluate(() => {
+    const card = [...document.querySelectorAll('.related.products ul.products li.ssz-product-card')]
+      .find((node) => node.querySelector('[data-ssz-colour-swatches]'));
+    const selected = card?.querySelector('[data-ssz-colour-swatch][aria-pressed="true"]');
+    const available = card?.querySelector('[data-ssz-colour-available]');
+    return {
+      exists: Boolean(card),
+      selected: Boolean(selected),
+      availableOnlySafe: Boolean(available && !available.hasAttribute('aria-pressed') && !card?.classList.contains('ssz-product-card--colour-preview')),
+      semanticContract: Boolean(card?.querySelector('[data-ssz-colour-swatches][role="group"][aria-label="Available colours"]')),
+      noNestedInteractive: Boolean(card && !card.querySelector('.woocommerce-loop-product__link button, .woocommerce-loop-product__link a')),
+    };
+  });
+  return {
+    configured: true,
+    semanticContract: state.semanticContract,
+    selected: state.selected,
+    availableOnlySafe: state.availableOnlySafe,
+    noNavigation: url === page.url(),
+    noNestedInteractive: state.exists && state.noNestedInteractive,
+  };
+};
+
+const inspectArchivePage = async (page, expectedColumns) => {
+  const archive = await page.evaluate((expected) => {
+    const root = document.documentElement;
+    const body = document.body;
+    const grid = document.querySelector('ul.products');
+    const gridStyle = grid ? getComputedStyle(grid) : null;
+    const columnCount = gridStyle?.gridTemplateColumns && gridStyle.gridTemplateColumns !== 'none'
+      ? gridStyle.gridTemplateColumns.split(' ').filter(Boolean).length
+      : null;
+    const images = [...document.images].filter((image) => image.complete && image.naturalWidth === 0 && image.currentSrc);
+    return {
+      header: Boolean(document.querySelector('.ssz-archive-header h1')),
+      toolbar: Boolean(document.querySelector('[data-archive-toolbar]')),
+      count: Boolean(document.querySelector('.ssz-archive-toolbar__count')),
+      filterToggle: Boolean(document.querySelector('[data-archive-filters-toggle]')),
+      ordering: Boolean(document.querySelector('.woocommerce-ordering select')),
+      grid: Boolean(grid),
+      columnCount,
+      expectedColumns: expected,
+      categoryNav: Boolean(document.querySelector('.ssz-archive-category-nav')),
+      presentation: (() => {
+        const card = document.querySelector('ul.products li.ssz-product-card');
+        const cards = [...document.querySelectorAll('ul.products li.ssz-product-card')];
+        const media = card?.querySelector('.ssz-product-card__media');
+        const brand = card?.querySelector('.ssz-product-card__brand');
+        const title = card?.querySelector('.woocommerce-loop-product__title');
+        const swatches = card?.querySelector('.ssz-product-card__swatches');
+        const price = card?.querySelector('.price');
+        const saleCard = cards.find((item) => item.querySelector('.price del'));
+        const salePrice = saleCard?.querySelector('.price');
+        const saleCurrent = saleCard?.querySelector('.price ins');
+        const saleOld = saleCard?.querySelector('.price del');
+        const rect = (element) => element?.getBoundingClientRect();
+        const cardRect = rect(card);
+        const mediaRect = rect(media);
+        const firstRowTop = cardRect?.top ?? null;
+        const firstRow = firstRowTop === null ? [] : cards.filter((item) => Math.abs((rect(item)?.top ?? 0) - firstRowTop) < 2);
+        const secondRow = firstRowTop === null ? [] : cards.filter((item) => (rect(item)?.top ?? 0) > firstRowTop + 2);
+        const firstRowSorted = [...firstRow].sort((left, right) => (rect(left)?.left ?? 0) - (rect(right)?.left ?? 0));
+        const firstRowMedia = firstRowSorted.map((item) => rect(item.querySelector('.ssz-product-card__media'))).filter(Boolean);
+        const row1InfoBottom = firstRow.length ? Math.max(...firstRow.map((item) => rect(item.querySelector('.price'))?.bottom ?? rect(item)?.bottom ?? 0)) : null;
+        const row2MediaTop = secondRow.length ? Math.min(...secondRow.map((item) => rect(item.querySelector('.ssz-product-card__media'))?.top ?? Infinity)) : null;
+        const cardWidths = cards.map((item) => rect(item)?.width ?? 0).filter(Boolean);
+        const mediaWidths = cards.map((item) => rect(item.querySelector('.ssz-product-card__media'))?.width ?? 0).filter(Boolean);
+        const rowColumnGaps = firstRowSorted.slice(1).map((item, index) => (rect(item)?.left ?? 0) - (rect(firstRowSorted[index])?.right ?? 0));
+        return {
+          brandColor: brand ? getComputedStyle(brand).color : null,
+          titleWeight: title ? getComputedStyle(title).fontWeight : null,
+          priceWeight: price ? getComputedStyle(price).fontWeight : null,
+          saleCurrentWeight: saleCurrent ? getComputedStyle(saleCurrent).fontWeight : null,
+          saleOldWeight: saleOld ? getComputedStyle(saleOld).fontWeight : null,
+          saleOldColor: saleOld ? getComputedStyle(saleOld).color : null,
+          saleOldDecoration: saleOld ? getComputedStyle(saleOld).textDecorationLine : null,
+          brandMediaGap: media && brand ? Number((brand.getBoundingClientRect().top - media.getBoundingClientRect().bottom).toFixed(1)) : null,
+          brandTitleGap: brand && title ? Number((title.getBoundingClientRect().top - brand.getBoundingClientRect().bottom).toFixed(1)) : null,
+          swatchTitleGap: title && swatches ? Number((swatches.getBoundingClientRect().top - title.getBoundingClientRect().bottom).toFixed(1)) : null,
+          swatchPriceGap: swatches && price ? Number((price.getBoundingClientRect().top - swatches.getBoundingClientRect().bottom).toFixed(1)) : null,
+          priceTitleGap: title && price ? Number((price.getBoundingClientRect().top - title.getBoundingClientRect().bottom).toFixed(1)) : null,
+          rowGap: gridStyle ? gridStyle.rowGap : null,
+          cardCount: cards.length,
+          cardWidth: cardWidths[0] ?? null,
+          mediaWidth: mediaWidths[0] ?? null,
+          mediaCardRatio: cardWidths[0] && mediaWidths[0] ? Number((mediaWidths[0] / cardWidths[0]).toFixed(3)) : null,
+          minMediaCardRatio: cardWidths.length && mediaWidths.length ? Number(Math.min(...cards.map((item) => {
+            const itemCard = rect(item);
+            const itemMedia = rect(item.querySelector('.ssz-product-card__media'));
+            return itemCard?.width && itemMedia?.width ? itemMedia.width / itemCard.width : 0;
+          })).toFixed(3)) : null,
+          columnGap: rowColumnGaps.length ? Number(Math.min(...rowColumnGaps).toFixed(1)) : null,
+          rowInfoGap: row2MediaTop !== null && row1InfoBottom !== null ? Number((row2MediaTop - row1InfoBottom).toFixed(1)) : null,
+          rowMediaAlignment: firstRowMedia.length > 1 ? Number((Math.max(...firstRowMedia.map((item) => item.top)) - Math.min(...firstRowMedia.map((item) => item.top))).toFixed(1)) : null,
+        };
+      })(),
+      brokenImages: images.length,
+      horizontalOverflow: Math.max(root?.scrollWidth ?? 0, body?.scrollWidth ?? 0) > (root?.clientWidth ?? 0) + 2,
+    };
+  }, expectedColumns);
+
+  const drawer = page.locator('[data-archive-filter-shell]');
+  const panel = page.locator('[data-archive-filter-shell] .ssz-filter-drawer__panel');
+  const filterToggle = page.locator('[data-archive-filters-toggle]');
+  const drawerState = {
+    configured: await filterToggle.count() > 0,
+    opened: null,
+    bodyScrollLock: null,
+    focusInside: null,
+    closedByEscape: null,
+    focusRestored: null,
+    accordion: { configured: false, expanded: null, collapsed: null },
+  };
+
+  if (drawerState.configured) {
+    await filterToggle.click();
+    await page.waitForTimeout(60);
+    drawerState.opened = await panel.isVisible() && await filterToggle.getAttribute('aria-expanded') === 'true';
+    drawerState.bodyScrollLock = await page.evaluate(() => getComputedStyle(document.documentElement).overflow === 'hidden' && getComputedStyle(document.body).overflow === 'hidden');
+    drawerState.focusInside = await page.evaluate(() => Boolean(document.activeElement?.closest('[data-archive-filter-shell]')));
+    const accordion = page.locator('[data-archive-accordion]').first();
+    drawerState.accordion.configured = await accordion.count() > 0;
+    if (drawerState.accordion.configured) {
+      const wasExpanded = await accordion.getAttribute('aria-expanded') === 'true';
+      await accordion.click();
+      drawerState.accordion[wasExpanded ? 'collapsed' : 'expanded'] = await accordion.getAttribute('aria-expanded') === (wasExpanded ? 'false' : 'true');
+      await accordion.click();
+      drawerState.accordion[wasExpanded ? 'expanded' : 'collapsed'] = await accordion.getAttribute('aria-expanded') === (wasExpanded ? 'true' : 'false');
+    }
+    await page.keyboard.press('Escape');
+    drawerState.closedByEscape = !(await panel.isVisible()) && await filterToggle.getAttribute('aria-expanded') === 'false';
+    drawerState.focusRestored = await page.evaluate(() => document.activeElement?.matches('[data-archive-filters-toggle]') ?? false);
+  }
+
+  return { ...archive, drawer: drawerState };
+};
+
 const browser = await chromium.launch({ headless: true, executablePath });
 const results = [];
+let archiveFunctional = {
+  filterSubmit: false,
+  filterQuery: null,
+  activeChips: false,
+  sorting: false,
+  popularityFirst: null,
+  categoryArchive: false,
+  brandArchive: false,
+  emptyState: false,
+  pagination: false,
+  consoleErrors: [],
+  pageErrors: [],
+};
 
 try {
   for (const width of widths) {
@@ -433,6 +764,7 @@ try {
     });
     const shopColumns = width < 768 ? 2 : width <= 1024 ? 3 : 4;
     const shopProductCards = await inspectProductCards(shopPage, { expectedColumns: shopColumns });
+    const shopArchive = await inspectArchivePage(shopPage, shopColumns);
     await shopPage.close();
 
     const pdpPage = await context.newPage();
@@ -459,6 +791,7 @@ try {
       };
     });
     const pdpProduct = await inspectProductPage(pdpPage);
+    const relatedSwatchInteraction = await inspectRelatedSwatchInteraction(pdpPage);
     await pdpPage.close();
     const search = { opened: false, inputFocused: false, closed: false, focusRestored: false, menuCloses: true };
     const searchToggle = page.locator('[data-search-toggle]');
@@ -630,6 +963,7 @@ try {
         consoleErrors: shopConsoleErrors,
         pageErrors: shopPageErrors,
         productCards: shopProductCards,
+        archive: shopArchive,
       },
       pdp: {
         responseStatus: pdpResponse?.status() ?? null,
@@ -639,6 +973,7 @@ try {
         consoleErrors: pdpConsoleErrors,
         pageErrors: pdpPageErrors,
         product: pdpProduct,
+        relatedSwatchInteraction,
       },
       search,
       menuState,
@@ -650,11 +985,139 @@ try {
 
     await context.close();
   }
+try {
+  const functionalContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const functionalPage = await functionalContext.newPage();
+  functionalPage.on('console', (message) => {
+    if (message.type() === 'error') archiveFunctional.consoleErrors.push(message.text());
+  });
+  functionalPage.on('pageerror', (error) => archiveFunctional.pageErrors.push(error.message));
+
+  await functionalPage.goto(new URL('shop/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+  const paginationPage = await functionalContext.newPage();
+  await paginationPage.goto(new URL('shop/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+  archiveFunctional.pagination = await paginationPage.locator('.woocommerce-pagination a.page-numbers').count() > 0;
+  await paginationPage.close();
+  await functionalPage.locator('[data-archive-filters-toggle]').click();
+  await functionalPage.locator('input[data-archive-filter-checkbox="filter_product_brand"]').first().check();
+  await functionalPage.locator('input[data-archive-filter-checkbox="filter_size"][value="m"]').check();
+  await functionalPage.getByRole('button', { name: 'Colour', exact: true }).click();
+  await functionalPage.locator('input[data-archive-filter-checkbox="filter_colour"][value="black"]').check();
+  await functionalPage.getByRole('button', { name: 'Price', exact: true }).click();
+  await functionalPage.locator('input[name="min_price"]').fill('20');
+  await functionalPage.locator('input[name="max_price"]').fill('130');
+  await functionalPage.getByRole('button', { name: 'Availability', exact: true }).click();
+  await functionalPage.locator('input[name="filter_stock_status"]').check();
+  await functionalPage.locator('[data-archive-filter-form] button[type="submit"]').click({ force: true });
+  await functionalPage.waitForLoadState('networkidle');
+  const filteredUrl = new URL(functionalPage.url());
+  archiveFunctional.filterQuery = filteredUrl.search;
+  archiveFunctional.filterSubmit = filteredUrl.searchParams.has('filter_product_brand') && filteredUrl.searchParams.get('filter_size') === 'm' && filteredUrl.searchParams.get('filter_colour') === 'black' && filteredUrl.searchParams.get('filter_stock_status') === 'instock';
+  archiveFunctional.activeChips = await functionalPage.locator('[data-archive-active-filters] .ssz-active-filter').count() >= 4;
+
+  const sortPage = await functionalContext.newPage();
+  await sortPage.goto(new URL('shop/?orderby=popularity', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+  archiveFunctional.sorting = await sortPage.locator('.woocommerce-ordering select').inputValue() === 'popularity';
+  archiveFunctional.popularityFirst = await sortPage.locator('ul.products .woocommerce-loop-product__title').first().innerText();
+  await sortPage.close();
+
+  const categoryPage = await functionalContext.newPage();
+  const categoryResponse = await categoryPage.goto(new URL('product-category/men/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+  archiveFunctional.categoryArchive = (categoryResponse?.status() ?? 500) < 400 && await categoryPage.locator('.ssz-archive-header h1').innerText() === 'Men';
+  await categoryPage.close();
+
+  const brandPage = await functionalContext.newPage();
+  const brandResponse = await brandPage.goto(new URL('brand/arena/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+  archiveFunctional.brandArchive = (brandResponse?.status() ?? 500) < 400 && await brandPage.locator('.ssz-archive-header h1').innerText() === 'Arena';
+  await brandPage.close();
+
+  const emptyPage = await functionalContext.newPage();
+  await emptyPage.goto(new URL('shop/?min_price=9999', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+  archiveFunctional.emptyState = await emptyPage.locator('.ssz-archive-empty').isVisible() && await emptyPage.getByText('No products found', { exact: true }).isVisible();
+  await emptyPage.close();
+
+  await functionalPage.close();
+  await functionalContext.close();
+} catch (error) {
+  archiveFunctional.pageErrors.push(error.message);
+}
+
 } finally {
   await browser.close();
 }
 
-console.log(JSON.stringify({ baseUrl, executablePath, requireLocalMenu, fallbackContract, results }, null, 2));
+if (process.env.SSZ_UAT_SUMMARY_ONLY === '1') {
+  console.log(JSON.stringify(results.map((result) => ({
+    width: result.width,
+    headerMode: result.headerMode,
+    homepage: {
+      cardContract: result.homepageProductCards.cardContract,
+      primaryImagesLoaded: result.homepageProductCards.primaryImagesLoaded,
+      secondaryImagesLoaded: result.homepageProductCards.secondaryImagesLoaded,
+      onlyTwoImages: result.homepageProductCards.onlyTwoImages,
+      coverApparel: result.homepageProductCards.coverApparel,
+      containEquipment: result.homepageProductCards.containEquipment,
+      containEquipmentSourceUncropped: result.homepageProductCards.containEquipmentSourceUncropped,
+      containSecondarySourceUncropped: result.homepageProductCards.containSecondarySourceUncropped,
+      saleState: result.homepageProductCards.saleState,
+      soldOutState: result.homepageProductCards.soldOutState,
+      variablePrice: result.homepageProductCards.variablePrice,
+      singleImageStable: result.homepageProductCards.singleImageStable,
+      noImageState: result.homepageProductCards.noImageState,
+      longTitleBounded: result.homepageProductCards.longTitleBounded,
+      retailPresentation: result.homepageProductCards.retailPresentation,
+      swatchContract: result.homepageProductCards.swatchContract,
+      hover: result.homepageProductCards.hover,
+      homepageRail: result.homepageProductCards.homepageRail,
+    },
+    shop: {
+      productCards: {
+        cardContract: result.shop.productCards.cardContract,
+        primaryImagesLoaded: result.shop.productCards.primaryImagesLoaded,
+        secondaryImagesLoaded: result.shop.productCards.secondaryImagesLoaded,
+        onlyTwoImages: result.shop.productCards.onlyTwoImages,
+        coverApparel: result.shop.productCards.coverApparel,
+        containEquipment: result.shop.productCards.containEquipment,
+        containEquipmentSourceUncropped: result.shop.productCards.containEquipmentSourceUncropped,
+        containSecondarySourceUncropped: result.shop.productCards.containSecondarySourceUncropped,
+        saleState: result.shop.productCards.saleState,
+        soldOutState: result.shop.productCards.soldOutState,
+        variablePrice: result.shop.productCards.variablePrice,
+        singleImageStable: result.shop.productCards.singleImageStable,
+        noImageState: result.shop.productCards.noImageState,
+        longTitleBounded: result.shop.productCards.longTitleBounded,
+        archiveColumns: result.shop.productCards.archiveColumns,
+        retailPresentation: result.shop.productCards.retailPresentation,
+        swatchContract: result.shop.productCards.swatchContract,
+        swatchInteraction: result.shop.productCards.swatchInteraction,
+        hover: result.shop.productCards.hover,
+      },
+      archive: {
+        header: result.shop.archive.header,
+        toolbar: result.shop.archive.toolbar,
+        count: result.shop.archive.count,
+        filterToggle: result.shop.archive.filterToggle,
+        ordering: result.shop.archive.ordering,
+        grid: result.shop.archive.grid,
+        columnCount: result.shop.archive.columnCount,
+        expectedColumns: result.shop.archive.expectedColumns,
+        horizontalOverflow: result.shop.archive.horizontalOverflow,
+        brokenImages: result.shop.archive.brokenImages,
+        presentation: result.shop.archive.presentation,
+        drawer: result.shop.archive.drawer,
+      },
+      menuState: result.menuState,
+      desktop: result.desktop,
+      focus: result.focus,
+    },
+    pdp: {
+      product: result.pdp.product,
+      relatedSwatchInteraction: result.pdp.relatedSwatchInteraction,
+    },
+  })), null, 2));
+} else {
+  console.log(JSON.stringify({ baseUrl, executablePath, requireLocalMenu, fallbackContract, results, archiveFunctional }, null, 2));
+}
 
 const failures = results.filter((result) => {
   const mobileFailure = result.menuState.checked && (
@@ -697,15 +1160,19 @@ const failures = results.filter((result) => {
     !result.homepageProductCards.cardContract || !result.homepageProductCards.primaryImagesLoaded || !result.homepageProductCards.secondaryImagesLoaded || !result.homepageProductCards.onlyTwoImages ||
     !result.homepageProductCards.coverApparel || !result.homepageProductCards.containEquipment || !result.homepageProductCards.containEquipmentSourceUncropped || !result.homepageProductCards.containSecondarySourceUncropped || !result.homepageProductCards.saleState || !result.homepageProductCards.soldOutState ||
     !result.homepageProductCards.variablePrice || !result.homepageProductCards.singleImageStable || !result.homepageProductCards.noImageState || !result.homepageProductCards.longTitleBounded ||
+    !result.homepageProductCards.retailPresentation || !result.homepageProductCards.swatchContract ||
     !result.homepageProductCards.hover.checked || !result.homepageProductCards.hover.changed || !result.homepageProductCards.hover.secondaryLoaded ||
     (result.width <= 767 && !result.homepageProductCards.homepageRail) ||
     !result.shop.themeVisible || result.shop.responseStatus === null || result.shop.responseStatus >= 400 || result.shop.navigationError || result.shop.horizontalOverflow || result.shop.duplicateIds.length ||
     result.shop.consoleErrors.length || result.shop.pageErrors.length || !result.shop.productCards.cardContract || !result.shop.productCards.primaryImagesLoaded || !result.shop.productCards.secondaryImagesLoaded ||
     !result.shop.productCards.onlyTwoImages || !result.shop.productCards.coverApparel || !result.shop.productCards.containEquipment || !result.shop.productCards.containEquipmentSourceUncropped || !result.shop.productCards.containSecondarySourceUncropped || !result.shop.productCards.saleState || !result.shop.productCards.soldOutState ||
     !result.shop.productCards.variablePrice || !result.shop.productCards.singleImageStable || !result.shop.productCards.noImageState || !result.shop.productCards.longTitleBounded || !result.shop.productCards.archiveColumns ||
-    !result.shop.productCards.hover.checked || !result.shop.productCards.hover.changed || !result.shop.productCards.hover.secondaryLoaded ||
+    !result.shop.productCards.retailPresentation || !result.shop.productCards.swatchContract || !result.shop.productCards.swatchInteraction.configured || !result.shop.productCards.swatchInteraction.allMappedConfigured || !result.shop.productCards.swatchInteraction.allMappedButtons || !result.shop.productCards.swatchInteraction.allMappedLabels || !result.shop.productCards.swatchInteraction.mixedConfigured || !result.shop.productCards.swatchInteraction.mixedPreviewable || !result.shop.productCards.swatchInteraction.mixedAvailableOnly || !result.shop.productCards.swatchInteraction.mixedNoMismatch || !result.shop.productCards.swatchInteraction.simpleIndicators || !result.shop.productCards.swatchInteraction.simpleNoFakeButtons || !result.shop.productCards.swatchInteraction.simpleNoPreviewClass || !result.shop.productCards.swatchInteraction.singleColourOmitted || !result.shop.productCards.swatchInteraction.maxFiveVisible || !result.shop.productCards.swatchInteraction.overflowLabel || !result.shop.productCards.swatchInteraction.groupSemantics || !result.shop.productCards.swatchInteraction.focusVisible || !result.shop.productCards.swatchInteraction.selected || !result.shop.productCards.swatchInteraction.sourceChanged || !result.shop.productCards.swatchInteraction.dimensionsStable || !result.shop.productCards.swatchInteraction.noNavigation || !result.shop.productCards.swatchInteraction.noAddToCart || !result.shop.productCards.swatchInteraction.noNestedInteractive || !result.shop.productCards.swatchInteraction.hoverPreserved ||
+    !result.shop.productCards.hover.checked || (result.width >= 768 && !result.shop.productCards.hover.changed) || !result.shop.productCards.hover.secondaryLoaded ||
+    !result.shop.archive.header || !result.shop.archive.toolbar || !result.shop.archive.count || !result.shop.archive.filterToggle || !result.shop.archive.ordering || !result.shop.archive.grid || result.shop.archive.horizontalOverflow || result.shop.archive.brokenImages || result.shop.archive.columnCount !== result.shop.archive.expectedColumns || result.shop.archive.presentation.brandColor !== 'rgb(35, 136, 173)' || result.shop.archive.presentation.titleWeight !== '700' || result.shop.archive.presentation.priceWeight !== '600' || result.shop.archive.presentation.saleCurrentWeight !== '600' || result.shop.archive.presentation.saleOldWeight !== '500' || result.shop.archive.presentation.saleOldDecoration !== 'line-through' || result.shop.archive.presentation.brandMediaGap < 10 || result.shop.archive.presentation.brandMediaGap > 18 || result.shop.archive.presentation.brandTitleGap < 4 || result.shop.archive.presentation.brandTitleGap > 9 || result.shop.archive.presentation.swatchTitleGap < 4 || result.shop.archive.presentation.swatchTitleGap > 10 || result.shop.archive.presentation.swatchPriceGap < 4 || result.shop.archive.presentation.swatchPriceGap > 10 || (result.width <= 430 && (result.shop.archive.presentation.minMediaCardRatio < .97 || result.shop.archive.presentation.columnGap < 7 || result.shop.archive.presentation.columnGap > 16 || result.shop.archive.presentation.rowMediaAlignment > 2 || result.shop.archive.presentation.rowInfoGap < 0 || result.shop.archive.presentation.rowInfoGap > 50)) ||
+    !result.shop.archive.drawer.opened || !result.shop.archive.drawer.bodyScrollLock || !result.shop.archive.drawer.focusInside || !result.shop.archive.drawer.closedByEscape || !result.shop.archive.drawer.focusRestored || (result.shop.archive.drawer.accordion.configured && (!result.shop.archive.drawer.accordion.expanded || !result.shop.archive.drawer.accordion.collapsed)) ||
     !result.pdp.themeVisible || result.pdp.responseStatus === null || result.pdp.responseStatus >= 400 || result.pdp.navigationError || result.pdp.horizontalOverflow || result.pdp.consoleErrors.length || result.pdp.pageErrors.length ||
-    !result.pdp.product.mainFound || result.pdp.product.mainHasCardClass || result.pdp.product.mainHasFitClass || !result.pdp.product.relatedFound || !result.pdp.product.relatedCardContract ||
+    !result.pdp.product.mainFound || result.pdp.product.mainHasCardClass || result.pdp.product.mainHasFitClass || !result.pdp.product.relatedFound || !result.pdp.product.relatedCardContract || !result.pdp.product.relatedRetailPresentation || !result.pdp.product.relatedSwatchContract || !result.pdp.relatedSwatchInteraction.configured || !result.pdp.relatedSwatchInteraction.semanticContract || (!result.pdp.relatedSwatchInteraction.selected && !result.pdp.relatedSwatchInteraction.availableOnlySafe) || !result.pdp.relatedSwatchInteraction.noNavigation || !result.pdp.relatedSwatchInteraction.noNestedInteractive ||
     !result.headerMode.colorLogoVisible || !result.headerMode.colorLogoLoaded || !result.headerMode.cartVisible ||
     !result.search.opened || !result.search.inputFocused || !result.search.closed || !result.search.focusRestored ||
     mobileFailure || desktopFailure || missingConfiguredMenu ||
@@ -717,5 +1184,10 @@ const failures = results.filter((result) => {
 
 if (failures.length) {
   console.error(`Visual UAT failed at: ${failures.map((failure) => failure.width).join(', ')}`);
+  process.exitCode = 1;
+}
+
+if (!archiveFunctional.filterSubmit || !archiveFunctional.activeChips || !archiveFunctional.sorting || archiveFunctional.popularityFirst !== 'STORE-005 TEST Simple Performance Suit' || !archiveFunctional.categoryArchive || !archiveFunctional.brandArchive || !archiveFunctional.emptyState || (process.env.SSZ_REQUIRE_PAGINATION === '1' && !archiveFunctional.pagination) || archiveFunctional.consoleErrors.length || archiveFunctional.pageErrors.length) {
+  console.error('Archive functional UAT failed');
   process.exitCode = 1;
 }

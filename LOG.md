@@ -183,3 +183,70 @@ The targeted follow-up corrected two implementation details: contain-mode produc
 DECISION
 STORE-005 is accepted. Pull request #4 was merged to `main` at merge commit `2f54e9135e146087923e4b07513d1b94ab0f0a8b`. STORE-006 — Shop/category pages becomes the next planned initiative.
 
+## 2026-09-27 — STORE-006 implementation and verification
+
+IMPLEMENTATION
+Created branch `luna/STORE-006-shop-category-pages` from accepted main SHA `85a55ea032e012d8dca23026c0b91134f11bb961` and advanced the theme version to `0.6.0`. Added a classic WooCommerce hook-first archive layer for Shop, product categories and native product brands: context-aware header/description, brand identity fallback, approved category rail, result toolbar, native sorting, filter drawer, active chips, filtered empty state and preserved WooCommerce pagination. No archive template override, FSE Product Collection, AJAX or plugin was introduced.
+
+IMPLEMENTATION
+Added server-rendered GET filtering for category, native `filter_product_brand`, native `filter_size`/`query_type_size`, native `filter_colour`/`query_type_colour`, `min_price`, `max_price` and in-stock availability. Added progressive-enhancement drawer JavaScript for comma-separated multi-select serialization, accordions, focus trap/restoration, Escape/backdrop/button close, body scroll lock and mutual exclusion with search/navigation overlays. Added archive-only CSS without changing STORE-005 card ownership; fixed the closed backdrop state so it cannot intercept the toolbar trigger.
+
+VERIFICATION
+Seeded Local-only global attributes, approved category hierarchy, size/colour terms, stock coverage, prices and distinct popularity values across the existing eight `STORE-005 TEST` products. Live browser checks verified Shop, Men, Arena and multi-filter archive URLs. The expanded Playwright visual UAT passed all ten required widths: 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px. It passed archive structure, 2/3/4 grid columns, native ordering, drawer open/close/focus/accordion behavior, no overflow, no broken images, no console/page errors and all STORE-003/004/005 regression assertions.
+
+VERIFICATION
+Functional archive UAT passed multi-group filter submit with `filter_product_brand=17`, `filter_size=m`, `query_type_size=or`, `filter_colour=black`, `query_type_colour=or`, `filter_stock_status=instock`, `min_price=20` and `max_price=130`; active chips, sorting/popularity order, category archive, brand archive and zero-result empty state all passed. A separate reversible pagination pass set `woocommerce_catalog_rows=1`, verified four cards and page 2 with four cards/current page 2, then restored the normal Local options. PHP lint, JavaScript syntax, diff checks and theme sync passed; the temporary UAT scripts and runtime fixtures remain untracked/local only.
+
+HANDOFF
+STORE-006 implementation, verification and documentation are complete. Branch is ready for Sol review; STORE-007 has not started and no merge has been performed.
+
+## 2026-09-27 — STORE-006 visual refinement
+
+IMPLEMENTATION
+Applied Sol’s focused PLP presentation correction on the existing `luna/STORE-006-shop-category-pages` branch. Added an archive-only `ssz-product-archive` body scope and refined only the listing presentation: light SwimShop-blue brand line, semibold title weight, image-to-copy spacing, title-to-price spacing and responsive grid row rhythm. The existing 4:5 media frame, contain/cover behavior, hover secondary image, SALE/SOLD OUT badges, placeholder handling, filters, sorting, pagination and query contract remain unchanged. No card swatches, logos, quick actions or architecture rewrite was introduced.
+
+VERIFICATION
+Re-ran the complete ten-width visual UAT at 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px. Computed archive assertions passed for brand color `rgb(35, 136, 173)`, title weight `600`, 16px image-to-brand gap, 10.4px title-to-price gap and responsive row gap. Fine-pointer hover passed at desktop widths; mobile widths correctly preserved touch/non-hover behavior. Multi-filter submit, active chips, sorting/popularity, category archive, brand archive, empty state, drawer behavior, no overflow, no broken images and no console/page errors remained green. Homepage New Arrivals/Best Sellers and STORE-003 header/search/navigation regression checks passed.
+
+HANDOFF
+Visual revision is complete and ready for Sol review. The filter layout, archive query structure and all non-presentation STORE-006 architecture remain unchanged. STORE-007 has not started and no merge has been performed.
+
+## 2026-09-27 — STORE-006 spacing revision
+
+IMPLEMENTATION
+Diagnosed the live archive geometry before changing spacing. WooCommerce's responsive `li.product` rule was sizing cards to 48% of each CSS grid track, leaving the apparent horizontal dead space. Added an archive-only, higher-specificity correction so product cards and media fill their grid tracks, then set 12px mobile gutters, 24px mobile row gaps, moderate tablet/desktop gaps, 12px media-to-brand spacing, 5.6px brand-to-title spacing and 6.4px title-to-price spacing. Archive titles now use weight `700`; base and sale-current prices use weight `600`; sale-old prices remain muted and struck through. Homepage rails and shared STORE-005 card behavior remain unchanged.
+
+VERIFICATION
+Measured the rendered Shop archive at 360, 390 and 430px: grid widths are 328/358/398px, card and media widths are 158/173/193px, media/card ratio is `1.000`, column gap is 12px, row info-to-next-media gap is 24px and row media alignment is exact. The full ten-width Playwright UAT passed at 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px, including archive structure, filters, sorting, category/brand contexts, drawer behavior, media contracts, badges, hover, no overflow, no broken images and no runtime errors. Manual exact-width screenshots confirmed the compact two-column mobile rhythm and desktop 4-column presentation.
+
+HANDOFF
+STORE-006 spacing revision is complete and ready for Sol review. Filter layout, category rail, sorting, query logic, pagination and archive architecture remain unchanged. STORE-007 has not started and no merge has been performed.
+
+## 2026-09-27 — STORE-006 related retail cards and colour previews
+
+IMPLEMENTATION
+Extended the archive retail presentation to WooCommerce Related Products through the reusable `ssz-product-card--retail` class and an opt-in `ssz_product_card_retail_presentation` filter. Homepage New Arrivals and Best Sellers remain outside the retail scope. Added global `pa_colour` swatches between title and price for archive/related cards only, with maximum five visible terms plus accessible `+N` overflow. Known terms map through `ssz_product_colour_value`; unknown terms receive a neutral outlined swatch. The hook boundary now closes retail product links before sibling swatch/price content so buttons are never nested inside WooCommerce product anchors.
+
+IMPLEMENTATION
+Added the no-framework `product-card-swatches.js` enhancement. Variable cards serialize responsive variation image data for `attribute_pa_colour` mappings and update only the primary card image, `srcset`, `sizes`, alt text and selected state; explicit colour preview suppresses unrelated secondary hover. Simple multi-colour cards remain indicator-only without guessed image mapping. The Local-only variable fixture now has seven colours, Black/Navy/Blue image mappings, and existing simple multi-colour/single-colour fixtures cover the other display states.
+
+VERIFICATION
+The full ten-width Playwright UAT passed at 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px. It verified related retail styling, global `pa_colour` data, single-colour omission, five-swatch maximum, `+2` overflow, accessible labels/focus, no nested buttons or anchors, Navy image-source change, selected state, unchanged dimensions, no navigation/cart action and hover suppression after explicit preview. Archive filtering/sorting/drawer/category/brand/empty-state checks and STORE-003/004/005 regressions remained green. Exact-width Shop and PDP screenshots were manually reviewed at the requested mobile and desktop widths; SALE/SOLD OUT, 4:5 media and the PDP main variation form remain intact.
+
+HANDOFF
+STORE-006 related-card and colour-preview work is complete and ready for Sol review. Filter layout, query logic, category navigation, sorting, pagination, archive geometry and PDP variation controls remain unchanged. STORE-007 has not started and no merge has been performed.
+
+## 2026-09-27 — STORE-006 final swatch correctness correction
+
+IMPLEMENTATION
+
+Corrected the swatch contract so only terms with trustworthy variation-image data render as `Preview …` buttons. Unmapped variable colours and simple multi-colour terms now render as non-focusable indicators with accessible `Available in …` text; they do not expose `aria-pressed`, mutate images or activate colour-preview hover suppression. Added `role="group"` and an accessible `Available colours` name to the swatch row, hardened JavaScript against stale/malformed unmapped controls, and retained the five-item plus `+N` display limit.
+
+VERIFICATION
+
+Added Local-only all-mapped and mixed-variable fixtures, then passed the full visual UAT at 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px. UAT verified mapped buttons and image changes, mixed Navy/Red indicator safety, simple indicator-only cards with normal hover, group semantics, focus, no nested interactive controls, no navigation/cart/image mismatch, related-product parity, homepage unchanged, archive filter/sort/pagination regressions and no console/page errors. PHP/JavaScript syntax and diff checks passed.
+
+HANDOFF
+
+STORE-006 final swatch correction is complete and ready for Sol review. Previous approved commit: `69c77779b251565bede301ec46693e60cb3f98d5`. STORE-007 has not started and no merge has been performed.
+
