@@ -5,7 +5,7 @@
 - [x] STORE-003 — Header and navigation
 - [x] STORE-004 — Homepage
 - [x] STORE-005 — Product cards
-- [ ] STORE-006 — Shop/category pages
+- [x] STORE-006 — Shop/category pages
 - [ ] STORE-007 — Product page
 - [ ] STORE-008 — Search
 - [ ] STORE-009 — Cart and mini-cart
