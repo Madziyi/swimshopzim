@@ -37,6 +37,10 @@ STORE-006 adds the shared Shop/category/brand archive framework through WooComme
 
 The STORE-006 visual refinement uses a reusable retail-card presentation for archives and related products: brand text uses a light SwimShop blue, cards fill their WooCommerce grid tracks, titles use bold emphasis, prices use a 600-level weight, and image/text/row spacing is tuned for a compact PLP rhythm. Global `pa_colour` terms render up to five swatch items plus `+N`; variable cards expose `Preview …` buttons only for mapped variation images, while unmapped variable colours and simple multi-colour cards show non-interactive `Available in …` indicators. Homepage rails remain on their existing shared-card rules.
 
+STORE-007 adds a hook-first product-page layer without copying WooCommerce templates. Native gallery markup remains compatible with variation images, zoom and lightbox; FlexSlider is disabled for the PDP so `product-page.css` can provide a desktop image grid, tablet stack and mobile scroll-snap gallery. The purchase summary keeps native brand, price, availability, quantity and variation behavior, with progressive `pa_colour`/`pa_size` button controls and `Add to bag` copy. The PDP uses native Product Details and configured Shipping & Returns accordions, an optional Customizer-managed Size Guide link, and no Material & Care section. Local-only fixture data and policy pages are documented in `LIVE-STATE.md` and are never packaged.
+
+The current STORE-007 correction keeps WooCommerce's native `pa_colour`/`pa_size` rows as the progressive-enhancement fallback, collapses only their redundant enhanced labels/geometry, preserves the native reset link, and leaves unsupported variation attributes native.
+
 ## Visual UAT
 
 With the Local site running and the custom theme active, install the development dependency and run the exact-width browser harness:

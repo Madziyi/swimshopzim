@@ -84,8 +84,18 @@ For fresh-install fallback verification, use a disposable Local database or a te
 
 ## Product page
 
-- Native WooCommerce simple and variable products render.
-- Variation selectors, gallery, price, add-to-cart and brand links remain usable.
+- STORE-007 uses a hook-first PDP layer in `inc/woocommerce/product-page.php`, `assets/css/product-page.css` and `assets/js/product-page.js`; no WooCommerce product template override or third-party gallery library is used.
+- WooCommerce's native gallery image nodes and variation-image contract remain intact. FlexSlider support is disabled on product pages so the native nodes can use a desktop grid, tablet one-column presentation and mobile CSS scroll-snap; native zoom/lightbox remain enabled and were verified.
+- Desktop uses an image-led gallery with a sticky purchase summary. Mobile uses normal-flow purchase content; the gallery scrolls horizontally with snap and the page itself has no horizontal overflow.
+- The summary hierarchy is native brand archive link, restrained H1, native WooCommerce price HTML, real `pa_colour` swatch buttons, real `pa_size` buttons, optional Size guide link, WooCommerce availability, native quantity input, Add to Bag and native details accordions.
+- `product-page.js` progressively enhances only colour/size controls, mirroring the native Woo selects. Native selects remain in the DOM and remain usable when theme JavaScript is unavailable; unavailable combinations mirror WooCommerce's disabled option state.
+- After enhancement, only the native `pa_colour` and `pa_size` rows receive stable enhanced-row classes: native labels disappear, rows without a WooCommerce reset link collapse, the reset-containing row preserves its native reset link, Woo minimum select dimensions are neutralized, and unsupported variation attributes remain native and visible. UAT asserts one visible Colour label, one visible Size label, no duplicate native labels or meaningful blank row geometry, and reset clearing of custom state.
+- A dedicated JavaScript-disabled PDP pass verifies native Colour/Size labels and selects remain visible while custom controls remain hidden, preserving the progressive-enhancement fallback.
+- Variable PDP price uses `variation.price_html` after a valid variation and restores the native parent range on reset. Variation image changes remain WooCommerce-owned.
+- Product Details uses `<details>/<summary>` and the long description, falling back to the short description only when long description is empty. Shipping & Returns renders only the page selected in the `SwimShop Product Page` Customizer section. No theme-created Material & Care section exists.
+- Local-only PDP fixture coverage includes simple/in-stock, sale, out-of-stock, no-image, single-image, multi-gallery and a hidden variable fixture with Black S/M/L, Navy M/L/XL and Blue S/M combinations. Temporary Size Guide and Shipping & Returns pages were assigned during UAT and remain runtime-only.
+- Automated PDP UAT passed HTTP success, one H1, breadcrumb, gallery, summary, brand, price, Add to Bag, related retail cards, no overflow, no console errors and no page errors at 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px. It also passed keyboard variation selection, disabled-state recalculation, dynamic price, variation image, reset, native accordions and configured/unconfigured page-setting behavior.
+- Local browser checks confirmed simple and valid variable products add through existing WooCommerce cart behavior, with cart count fragments updating; out-of-stock products expose no Add to Bag control.
 
 ## Search
 
