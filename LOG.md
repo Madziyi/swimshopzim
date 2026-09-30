@@ -305,3 +305,14 @@ HANDOFF
 
 STORE-007 variation-row correction is complete on `luna/STORE-007-product-page`, remains unmerged, and is ready for Sol review. STORE-008 has not started.
 
+## 2026-09-30 — STORE-007 Sol acceptance
+
+VERIFICATION
+Sol reviewed the complete STORE-007 branch through commit `c46d7ed9ffd79a87cccc2e54145267504ff9e50e`. Review covered the hook-first premium PDP, native WooCommerce gallery/variation compatibility, responsive desktop/tablet/mobile gallery presentation, sticky summary, native brand/price/stock/quantity, progressive `pa_colour` and `pa_size` controls, dynamic variation price/image updates, Size Guide and Shipping & Returns settings, Product Details accordion, explicit absence of Material & Care, and Related Products regression preservation.
+
+VERIFICATION
+The final correction cleanly collapses only the enhanced native `pa_colour`/`pa_size` rows after JavaScript initialization, removes duplicate visible labels, preserves native selects as WooCommerce's source of truth, retains `.reset_variations`, leaves unsupported attributes native and visible, and preserves full JS-off fallback behavior. The ten-width UAT, PHP/JS/JSON validation, packaging checks and STORE-003/004/005/006 regressions passed.
+
+DECISION
+STORE-007 is accepted. Pull request #6 was merged to `main` at merge commit `88f800a3ac09fa0e938d7fa22d7509c0a216af1f`. STORE-008 — Search becomes the next planned initiative.
+
