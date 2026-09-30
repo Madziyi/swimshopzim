@@ -6,7 +6,7 @@
 - [x] STORE-004 — Homepage
 - [x] STORE-005 — Product cards
 - [x] STORE-006 — Shop/category pages
-- [ ] STORE-007 — Product page
+- [x] STORE-007 — Product page
 - [ ] STORE-008 — Search
 - [ ] STORE-009 — Cart and mini-cart
 - [ ] STORE-010 — Checkout styling
