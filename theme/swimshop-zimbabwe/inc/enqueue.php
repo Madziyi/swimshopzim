@@ -12,6 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 function ssz_enqueue_assets() {
 	wp_enqueue_style( 'ssz-main', SSZ_THEME_URI . '/assets/css/main.css', array(), SSZ_THEME_VERSION );
 	wp_enqueue_style( 'ssz-header', SSZ_THEME_URI . '/assets/css/header.css', array( 'ssz-main' ), SSZ_THEME_VERSION );
+	wp_enqueue_style( 'ssz-search', SSZ_THEME_URI . '/assets/css/search.css', array( 'ssz-header' ), SSZ_THEME_VERSION );
 
 	if ( class_exists( 'WooCommerce' ) ) {
 		wp_enqueue_style( 'ssz-woocommerce', SSZ_THEME_URI . '/assets/css/woocommerce.css', array( 'ssz-main' ), SSZ_THEME_VERSION );

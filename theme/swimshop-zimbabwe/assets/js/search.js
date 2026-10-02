@@ -5,11 +5,21 @@
 
   if (!openButton || !panel) return;
 
-  const input = panel.querySelector('input[type="search"]');
+  const prepareInput = () => {
+    const input = panel.querySelector('input[type="search"]');
+    if (input) {
+      input.setAttribute('aria-label', 'Search products');
+      input.setAttribute('placeholder', 'Search products…');
+    }
+    return input;
+  };
+
+  prepareInput();
 
   const close = (restoreFocus = true) => {
     panel.hidden = true;
     openButton.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('ssz-search-active');
     if (restoreFocus) openButton.focus();
   };
 
@@ -19,7 +29,8 @@
 		document.dispatchEvent(new CustomEvent('ssz:close-filters'));
 		panel.hidden = false;
 		openButton.setAttribute('aria-expanded', 'true');
-		input?.focus();
+		document.body.classList.add('ssz-search-active');
+		prepareInput()?.focus();
 	};
 
   openButton.addEventListener('click', () => {

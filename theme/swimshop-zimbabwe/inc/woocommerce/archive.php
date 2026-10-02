@@ -10,12 +10,31 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
+ * Whether the current request is a product search.
+ *
+ * WooCommerce routes `?s=...&post_type=product` through its product archive
+ * template, but it remains a WordPress search request. Keep that distinction
+ * explicit so archive links preserve the query and the header can describe it.
+ *
+ * @return bool
+ */
+function ssz_is_product_search() {
+	if ( ! function_exists( 'is_search' ) || ! is_search() ) {
+		return false;
+	}
+
+	$post_type = get_query_var( 'post_type' );
+
+	return 'product' === $post_type || ( is_array( $post_type ) && in_array( 'product', $post_type, true ) );
+}
+
+/**
  * Whether the current request is a classic WooCommerce product archive.
  *
  * @return bool
  */
 function ssz_is_product_archive() {
-	return function_exists( 'is_shop' ) && ( is_shop() || is_product_taxonomy() );
+	return function_exists( 'is_shop' ) && ( is_shop() || is_product_taxonomy() || ssz_is_product_search() );
 }
 
 /**
@@ -29,6 +48,10 @@ function ssz_archive_body_class( $classes ) {
 		$classes[] = 'ssz-product-archive';
 	}
 
+	if ( ssz_is_product_search() ) {
+		$classes[] = 'ssz-product-search';
+	}
+
 	return $classes;
 }
 add_filter( 'body_class', 'ssz_archive_body_class' );
@@ -39,6 +62,10 @@ add_filter( 'body_class', 'ssz_archive_body_class' );
  * @return string
  */
 function ssz_archive_type() {
+	if ( ssz_is_product_search() ) {
+		return 'search';
+	}
+
 	if ( is_shop() ) {
 		return 'shop';
 	}
@@ -58,6 +85,10 @@ function ssz_archive_type() {
  * @return string
  */
 function ssz_archive_base_url() {
+	if ( ssz_is_product_search() ) {
+		return home_url( '/' );
+	}
+
 	if ( is_shop() ) {
 		return ssz_get_shop_url();
 	}
@@ -164,6 +195,11 @@ function ssz_archive_orderby() {
 function ssz_archive_build_url( $filters, $sort = true ) {
 	$args = array();
 
+	if ( ssz_is_product_search() ) {
+		$args['s']         = get_search_query( false );
+		$args['post_type'] = 'product';
+	}
+
 	foreach ( array( 'filter_product_cat', 'filter_product_brand', 'filter_size', 'filter_colour' ) as $key ) {
 		if ( ! empty( $filters[ $key ] ) ) {
 			$args[ $key ] = 'filter_product_brand' === $key
@@ -260,7 +296,7 @@ function ssz_archive_category_navigation() {
 
 	$term = get_queried_object();
 
-	if ( is_shop() || ( $term instanceof WP_Term && 'product_brand' === $term->taxonomy ) ) {
+	if ( in_array( ssz_archive_type(), array( 'shop', 'brand', 'search' ), true ) || ( $term instanceof WP_Term && 'product_brand' === $term->taxonomy ) ) {
 		return ssz_archive_preferred_categories();
 	}
 
@@ -311,7 +347,7 @@ function ssz_archive_description() {
 		return trim( (string) $term->description );
 	}
 
-	if ( is_shop() ) {
+	if ( is_shop() && ! ssz_is_product_search() ) {
 		$shop_page = get_post( wc_get_page_id( 'shop' ) );
 		return $shop_page ? trim( (string) $shop_page->post_excerpt ) : '';
 	}
@@ -327,7 +363,11 @@ function ssz_archive_description() {
 function ssz_render_archive_header() {
 	$type = ssz_archive_type();
 	$term = get_queried_object();
-	$title = is_shop() ? get_the_title( wc_get_page_id( 'shop' ) ) : ( $term instanceof WP_Term ? $term->name : __( 'Shop', 'swimshop-zimbabwe' ) );
+	if ( 'search' === $type ) {
+		$title = sprintf( __( 'Search results for “%s”', 'swimshop-zimbabwe' ), get_search_query() );
+	} else {
+		$title = is_shop() ? get_the_title( wc_get_page_id( 'shop' ) ) : ( $term instanceof WP_Term ? $term->name : __( 'Shop', 'swimshop-zimbabwe' ) );
+	}
 	$description = ssz_archive_description();
 	$navigation = ssz_archive_category_navigation();
 
@@ -404,7 +444,7 @@ function ssz_archive_filter_groups() {
 	$term   = get_queried_object();
 	$groups = array();
 
-	if ( 'shop' === $type || 'brand' === $type ) {
+	if ( in_array( $type, array( 'shop', 'brand', 'search' ), true ) ) {
 		$category_terms = ssz_archive_filter_terms( 'product_cat' );
 		if ( $category_terms ) {
 			$groups['filter_product_cat'] = array( 'label' => __( 'Category', 'swimshop-zimbabwe' ), 'type' => 'slug', 'terms' => $category_terms );
@@ -528,6 +568,9 @@ function ssz_render_archive_toolbar() {
 	ssz_render_archive_active_filters();
 
 	echo '<div class="ssz-filter-drawer" data-archive-filter-shell><button type="button" class="ssz-filter-drawer__backdrop" data-archive-filter-backdrop aria-label="' . esc_attr__( 'Close filters', 'swimshop-zimbabwe' ) . '"></button><aside id="' . esc_attr( $drawer_id ) . '" class="ssz-filter-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="ssz-archive-filter-title" hidden><div class="ssz-filter-drawer__header"><h2 id="ssz-archive-filter-title">' . esc_html__( 'Filters', 'swimshop-zimbabwe' ) . '</h2><button type="button" class="ssz-filter-drawer__close" data-archive-filter-close aria-label="' . esc_attr__( 'Close filters', 'swimshop-zimbabwe' ) . '">×</button></div><form class="ssz-filter-form" method="get" action="' . esc_url( ssz_archive_base_url() ) . '" data-archive-filter-form>';
+	if ( ssz_is_product_search() ) {
+		echo '<input type="hidden" name="s" value="' . esc_attr( get_search_query( false ) ) . '"><input type="hidden" name="post_type" value="product">';
+	}
 	if ( ssz_archive_orderby() ) {
 		echo '<input type="hidden" name="orderby" value="' . esc_attr( ssz_archive_orderby() ) . '">';
 	}
@@ -557,12 +600,12 @@ function ssz_archive_product_query_tax_query( $tax_query ) {
 		$tax_query[] = array( 'taxonomy' => 'product_cat', 'field' => 'slug', 'terms' => $filters['filter_product_cat'], 'operator' => 'IN', 'include_children' => false );
 	}
 
-	if ( ! empty( $filters['filter_product_brand'] ) && is_array( $_GET['filter_product_brand'] ?? null ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	if ( ! empty( $filters['filter_product_brand'] ) ) {
 		$tax_query[] = array( 'taxonomy' => 'product_brand', 'field' => 'term_id', 'terms' => $filters['filter_product_brand'], 'operator' => 'IN', 'include_children' => false );
 	}
 
 	foreach ( array( 'filter_size' => 'pa_size', 'filter_colour' => 'pa_colour' ) as $key => $taxonomy ) {
-		if ( ! empty( $filters[ $key ] ) && is_array( $_GET[ $key ] ?? null ) && taxonomy_exists( $taxonomy ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( ! empty( $filters[ $key ] ) && taxonomy_exists( $taxonomy ) ) {
 			$tax_query[] = array( 'taxonomy' => $taxonomy, 'field' => 'slug', 'terms' => $filters[ $key ], 'operator' => 'IN', 'include_children' => false );
 		}
 	}
@@ -611,6 +654,12 @@ add_filter( 'woocommerce_catalog_orderby', 'ssz_archive_catalog_orderby' );
  * @return void
  */
 function ssz_archive_empty_state() {
+	if ( ssz_is_product_search() ) {
+		$query = get_search_query();
+		echo '<div class="ssz-archive-empty ssz-search-empty" data-search-empty><h2>' . esc_html( sprintf( __( 'NO RESULTS FOR “%s”', 'swimshop-zimbabwe' ), $query ) ) . '</h2><p>' . esc_html__( "We couldn't find any products matching your search.", 'swimshop-zimbabwe' ) . '</p><form class="ssz-search-again" role="search" method="get" action="' . esc_url( home_url( '/' ) ) . '"><label for="ssz-search-again-input" class="screen-reader-text">' . esc_html__( 'Search products again', 'swimshop-zimbabwe' ) . '</label><input id="ssz-search-again-input" type="search" name="s" value="' . esc_attr( $query ) . '" placeholder="' . esc_attr__( 'Search products…', 'swimshop-zimbabwe' ) . '"><input type="hidden" name="post_type" value="product"><button class="ssz-button ssz-button--primary" type="submit">' . esc_html__( 'Search products again', 'swimshop-zimbabwe' ) . '</button></form><a class="ssz-button ssz-button--secondary" href="' . esc_url( ssz_get_shop_url() ) . '">' . esc_html__( 'Shop all', 'swimshop-zimbabwe' ) . '</a></div>';
+		return;
+	}
+
 	echo '<div class="ssz-archive-empty"><h2>' . esc_html__( 'No products found', 'swimshop-zimbabwe' ) . '</h2><p>' . esc_html__( 'Try removing one or more filters.', 'swimshop-zimbabwe' ) . '</p><a class="ssz-button ssz-button--primary" href="' . esc_url( ssz_archive_build_url( array( 'filter_product_cat' => array(), 'filter_product_brand' => array(), 'filter_size' => array(), 'filter_colour' => array(), 'filter_stock_status' => array(), 'min_price' => '', 'max_price' => '' ) ) ) . '">' . esc_html__( 'Clear filters', 'swimshop-zimbabwe' ) . '</a></div>';
 }
 
@@ -631,7 +680,7 @@ function ssz_configure_archive_hooks() {
 	add_action( 'woocommerce_before_shop_loop', 'ssz_render_archive_toolbar', 20 );
 	remove_action( 'woocommerce_sidebar', 'woocommerce_get_sidebar', 10 );
 
-	if ( ssz_archive_has_active_filters() ) {
+	if ( ssz_is_product_search() || ssz_archive_has_active_filters() ) {
 		remove_action( 'woocommerce_no_products_found', 'wc_no_products_found' );
 		add_action( 'woocommerce_no_products_found', 'ssz_archive_empty_state' );
 	}

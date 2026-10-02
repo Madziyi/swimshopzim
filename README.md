@@ -41,6 +41,8 @@ STORE-007 adds a hook-first product-page layer without copying WooCommerce templ
 
 The current STORE-007 correction keeps WooCommerce's native `pa_colour`/`pa_size` rows as the progressive-enhancement fallback, collapses only their redundant enhanced labels/geometry, preserves the native reset link, and leaves unsupported variation attributes native.
 
+STORE-008 adds product search through the existing SwimShop header form. Ivory Search FREE is the Local-only matching/AJAX backend candidate; the theme retains ownership of the shell, overlay behavior, result styling and WooCommerce product-search archive. Product results reuse the STORE-006 archive cards, filters, sorting, pagination and query preservation. Configure the Local Ivory Default Search Form as product-only with title/content/excerpt and product taxonomy-title matching, AJAX in both modes, Partial matching and six results per request. Do not commit the plugin, its index, Local database, uploads or fixture runtime state. The free-tier limits observed in UAT are no typo correction, no reliable SKU matching and no exact medium-size result in the fixture taxonomy-title path.
+
 ## Visual UAT
 
 With the Local site running and the custom theme active, install the development dependency and run the exact-width browser harness:

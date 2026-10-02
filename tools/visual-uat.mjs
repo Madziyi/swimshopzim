@@ -733,6 +733,17 @@ let archiveFunctional = {
   consoleErrors: [],
   pageErrors: [],
 };
+let searchFunctional = {
+  version: null,
+  form: { opened: false, focused: false, placeholder: false, ariaLabel: false },
+  matrix: {},
+  selectors: { container: false, productItem: false, title: false, image: false, price: false, excerpt: false },
+  submit: false,
+  noResults: false,
+  productOnly: false,
+  consoleErrors: [],
+  pageErrors: [],
+};
 let pdpFallback = {
   nativeColourVisible: false,
   nativeSizeVisible: false,
@@ -1165,6 +1176,90 @@ try {
   await fallbackPage.close();
   await fallbackContext.close();
 
+  try {
+    const searchContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const searchPage = await searchContext.newPage();
+    searchPage.on('console', (message) => {
+      if (message.type() === 'error') searchFunctional.consoleErrors.push(message.text());
+    });
+    searchPage.on('pageerror', (error) => searchFunctional.pageErrors.push(error.message));
+
+    await searchPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+    const searchToggle = searchPage.locator('[data-search-toggle]');
+    const searchPanel = searchPage.locator('[data-search-panel]');
+    const searchInput = searchPanel.locator('input[type="search"]');
+    await searchToggle.click();
+    searchFunctional.form.opened = await searchPanel.isVisible();
+    searchFunctional.form.focused = await searchPage.evaluate(() => document.activeElement?.matches('[data-search-panel] input[type="search"]') ?? false);
+    searchFunctional.form.placeholder = await searchInput.getAttribute('placeholder') === 'Search products…';
+    searchFunctional.form.ariaLabel = await searchInput.getAttribute('aria-label') === 'Search products';
+
+    const queries = [
+      ['title', 'Variable Training Suit'],
+      ['partial', 'train'],
+      ['category', 'goggles'],
+      ['brand', 'arena'],
+      ['colour', 'navy'],
+      ['size', 'medium'],
+      ['sizeShort', 'm'],
+      ['typo', 'trainng'],
+      ['sku', 'SKU-TEST-001'],
+      ['excludedPage', 'Sample Page'],
+    ];
+
+    for (const [key, query] of queries) {
+      await searchInput.fill('');
+      await searchInput.fill(query);
+      await searchPage.waitForTimeout(1200);
+      searchFunctional.matrix[key] = await searchPage.evaluate(() => {
+        const box = document.querySelector('.is-ajax-search-result');
+        const productItems = [...document.querySelectorAll('.is-ajax-search-result .is-ajax-search-post.is-product')];
+        const productLinks = [...document.querySelectorAll('.is-ajax-search-result a[href*="/product/"]')].filter((link) => link.textContent?.trim());
+        return {
+          resultVisible: Boolean(box && getComputedStyle(box).display !== 'none'),
+          productCount: productItems.length,
+          productTitles: productLinks.map((link) => link.textContent.replace(/\s+/g, ' ').trim()),
+          text: box?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+        };
+      });
+
+      if (key === 'partial') {
+        searchFunctional.selectors = await searchPage.evaluate(() => {
+          const boxes = [...document.querySelectorAll('.is-ajax-search-result')];
+          const box = boxes.find((candidate) => candidate.querySelector('.is-ajax-search-post.is-product')) ?? boxes[0];
+          const item = box?.querySelector('.is-ajax-search-post.is-product');
+          return {
+            container: Boolean(box),
+            productItem: Boolean(item),
+            title: Boolean(item?.querySelector('.is-title a')),
+            image: Boolean(box?.querySelector('.is-ajax-search-post.is-product img')),
+            price: Boolean(item?.querySelector('.is-prices')),
+            excerpt: Boolean(item?.querySelector('.is-ajax-result-description')),
+          };
+        });
+      }
+    }
+
+    searchFunctional.noResults = searchFunctional.matrix.typo.text.includes('Nothing found') && searchFunctional.matrix.sku.text.includes('Nothing found');
+    searchFunctional.productOnly = searchFunctional.matrix.excludedPage.productCount === 0 && searchFunctional.matrix.excludedPage.text.includes('Nothing found');
+
+    await searchPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+    await searchPage.locator('[data-search-toggle]').click();
+    const submitInput = searchPage.locator('[data-search-panel] input[type="search"]');
+    await submitInput.fill('train');
+    await searchPage.waitForTimeout(1200);
+    await submitInput.press('Enter');
+    await searchPage.waitForLoadState('networkidle', { timeout: 30000 });
+    const submitUrl = new URL(searchPage.url());
+    searchFunctional.submit = submitUrl.searchParams.get('s') === 'train' && submitUrl.searchParams.get('post_type') === 'product' && await searchPage.locator('.ssz-product-search h1').count() === 1;
+    searchFunctional.version = await searchPage.evaluate(() => Boolean([...document.querySelectorAll('script,link')].some((element) => element.src?.includes('/plugins/add-search-to-menu/') || element.href?.includes('/plugins/add-search-to-menu/'))));
+
+    await searchPage.close();
+    await searchContext.close();
+  } catch (error) {
+    searchFunctional.pageErrors.push(error.message);
+  }
+
 try {
   const functionalContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const functionalPage = await functionalContext.newPage();
@@ -1297,8 +1392,9 @@ if (process.env.SSZ_UAT_SUMMARY_ONLY === '1') {
       fallback: pdpFallback,
     },
   })), null, 2));
+  console.log(JSON.stringify({ searchFunctional }, null, 2));
 } else {
-  console.log(JSON.stringify({ baseUrl, executablePath, requireLocalMenu, fallbackContract, pdpFallback, results, archiveFunctional }, null, 2));
+  console.log(JSON.stringify({ baseUrl, executablePath, requireLocalMenu, fallbackContract, pdpFallback, results, archiveFunctional, searchFunctional }, null, 2));
 }
 
 const failures = results.filter((result) => {
@@ -1371,6 +1467,11 @@ if (failures.length) {
 
 if (!archiveFunctional.filterSubmit || !archiveFunctional.activeChips || !archiveFunctional.sorting || archiveFunctional.popularityFirst !== 'STORE-005 TEST Simple Performance Suit' || !archiveFunctional.categoryArchive || !archiveFunctional.brandArchive || !archiveFunctional.emptyState || (process.env.SSZ_REQUIRE_PAGINATION === '1' && !archiveFunctional.pagination) || archiveFunctional.consoleErrors.length || archiveFunctional.pageErrors.length) {
   console.error('Archive functional UAT failed');
+  process.exitCode = 1;
+}
+
+if (!searchFunctional.form.opened || !searchFunctional.form.focused || !searchFunctional.form.placeholder || !searchFunctional.form.ariaLabel || !searchFunctional.matrix.title?.productCount || !searchFunctional.matrix.partial?.productCount || !searchFunctional.matrix.category?.productCount || !searchFunctional.matrix.brand?.productCount || !searchFunctional.matrix.colour?.productCount || !searchFunctional.submit || !searchFunctional.noResults || !searchFunctional.productOnly || !searchFunctional.selectors.container || !searchFunctional.selectors.productItem || !searchFunctional.selectors.title || !searchFunctional.selectors.price || !searchFunctional.selectors.excerpt || searchFunctional.consoleErrors.length || searchFunctional.pageErrors.length) {
+  console.error('Search functional UAT failed');
   process.exitCode = 1;
 }
 

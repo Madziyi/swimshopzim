@@ -316,3 +316,27 @@ The final correction cleanly collapses only the enhanced native `pa_colour`/`pa_
 DECISION
 STORE-007 is accepted. Pull request #6 was merged to `main` at merge commit `88f800a3ac09fa0e938d7fa22d7509c0a216af1f`. STORE-008 — Search becomes the next planned initiative.
 
+## 2026-10-01 — STORE-008 implementation and verification
+
+SCOPE
+
+Created `luna/STORE-008-search` from accepted `main` SHA `75a2ac8a1697d2f94482d9eb752899648e533c16`. Ivory Search FREE v5.5.18 (`add-search-to-menu`) is installed and configured in the Local WordPress runtime only; no plugin files, database export, uploads or generated runtime data are part of the repository.
+
+CONFIGURATION
+
+Configured the existing Ivory Default Search Form (ID 117) as a product-only search. Title, content and excerpt matching are enabled, product taxonomy-title matching is enabled for the Local product brand/category/tag/colour/size taxonomies, AJAX is enabled for both predictive results and the search results page, the free Partial matching mode is selected, and the result limit is six. The Default WordPress Search Engine remains active: the free inverted-index option was inspected but could not be built in this Local UI and was reverted rather than leaving a broken index dependency. SKU matching and typo correction remain unverified/unavailable in the free backend and are documented as expected limitations.
+
+IMPLEMENTATION
+
+Preserved the existing SwimShop header search shell and added a small integration layer for the real Ivory form: product-search labels/placeholders, focus/close state and the shared overlay lifecycle. Added scoped Ivory result styling using the actual AJAX selectors for product image, title, price and excerpt presentation. Extended the STORE-006 WooCommerce archive context to product searches so the results page reuses the approved archive cards, filters, sorting, pagination and query-preserving GET contract. Search filters now correctly apply the serialized brand/size/colour values emitted by the drawer. Added product-only search empty states with a visible search-again form and Shop all fallback, plus a generic `search.php` fallback when WooCommerce is unavailable.
+
+VERIFICATION
+
+Phase A passed the required existing-form, exact-title, partial-title, category, AJAX, Enter/submit, product-only and no-console/page-error gates. The Local matrix returned one exact `Variable Training Suit`, six product suggestions for `train`, one Goggles result, six Arena results and six Navy results. `medium` returned no result in the free taxonomy-title path; short `m` was broad, `trainng` returned no result, and representative `SKU-TEST-001` returned no result as expected for the fixture/free-tier limitation. `Sample Page` returned no products. Direct result-page checks passed search heading, filters, Arena filter preservation, sorting, pagination and no-results recovery.
+
+The full `npm run visual-uat` passed at 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px with the existing STORE-003/004/005/006/007 regressions, Ivory selector contract, overlay interactions and zero console/page errors. PHP lint, JavaScript syntax checks and `git diff --check` passed.
+
+HANDOFF
+
+STORE-008 implementation and Local verification are complete on `luna/STORE-008-search`; the branch remains unmerged and is ready for Sol review. STORE-009 has not started.
+
