@@ -8,7 +8,7 @@
 - [x] STORE-006 — Shop/category pages
 - [x] STORE-007 — Product page
 - [x] STORE-008 — Search
-- [ ] STORE-009 — Cart and mini-cart
+- [-] STORE-009 — Cart and mini-cart (in implementation)
 - [ ] STORE-010 — Checkout styling
 - [ ] STORE-011 — Customer account styling
 - [ ] STORE-012 — Responsive polish

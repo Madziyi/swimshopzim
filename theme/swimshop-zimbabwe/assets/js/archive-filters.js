@@ -24,6 +24,7 @@
     document.dispatchEvent(new CustomEvent('ssz:close-search'));
     document.dispatchEvent(new CustomEvent('ssz:close-menu'));
     document.dispatchEvent(new CustomEvent('ssz:close-desktop-menus'));
+    document.dispatchEvent(new CustomEvent('ssz:close-cart'));
     panel.hidden = false;
     shell.classList.add('is-open');
     toggle.setAttribute('aria-expanded', 'true');

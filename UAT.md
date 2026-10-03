@@ -123,7 +123,11 @@ For fresh-install fallback verification, use a disposable Local database or a te
 
 ## Cart
 
-- Cart page renders and the header count updates after adding an item.
+- STORE-009 keeps the live WooCommerce Cart Block on page ID 9; no shortcode replacement or alternate cart template is used. WooCommerce remains authoritative for cart rows, prices, quantity rules, coupon disclosure, checkout submission and Store API mutations.
+- The header bag remains a real `/cart/` link and progressively enhances to a right-side drawer. The drawer uses Woo fragments for item/count/subtotal refresh, Store API `update-item`/`remove-item` requests for quantity and removal, exact visible labels `YOUR BAG`, `CHECKOUT`, `VIEW CART` and `Continue shopping`, and server-rendered empty content with a real Shop link.
+- The drawer contract covers successful simple and variable PDP adds, readable variation labels, quantity plus/minus, remove, live count/subtotal, loading/error status, Escape/backdrop/close behavior, focus trapping/restoration, body scroll lock and search/filter/navigation overlay exclusivity. The full Cart Block uses the same visual hierarchy, a subtotal bridge, native coupon disclosure and a theme-owned empty-state sibling; the existing New in store rail is hidden on Cart pages.
+- Automated Playwright browser UAT passed the required widths `360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440, 1920` for the header bag/drawer surface, focus and scroll behavior, no horizontal overflow, zero console/page errors, plus functional simple/variable add, variation labels, quantity updates, subtotal/count synchronization, Cart Block rendering, coupon, remove, empty drawer and empty Cart state. A strengthened JavaScript-disabled pass confirms the real cart link and Cart heading, but the filled-cart fallback criterion is FAIL: the live block exposes no rendered quantity input or remove control without JavaScript hydration, even after a native form add; checkout markup remains present.
+- Known architecture limitation / Sol decision required: WooCommerce's Cart Block is JavaScript-hydrated. With JavaScript disabled, the theme preserves the block as required and supplies the real cart URL/header fallback, but a filled Cart Block cannot provide the required quantity/remove controls. Replacing the block with a shortcode would change the accepted Cart architecture and is intentionally out of scope for this branch; STORE-009 is therefore Partial until Sol accepts this limitation or authorizes a separate Cart-page architecture change.
 
 ## Checkout
 

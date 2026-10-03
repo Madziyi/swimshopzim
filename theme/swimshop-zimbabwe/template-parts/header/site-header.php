@@ -39,7 +39,7 @@
 				<span><?php esc_html_e( 'Account', 'swimshop-zimbabwe' ); ?></span>
 			</a>
 
-			<a class="ssz-cart-link" href="<?php echo esc_url( ssz_get_cart_url() ); ?>">
+			<a class="ssz-cart-link" href="<?php echo esc_url( ssz_get_cart_url() ); ?>" aria-expanded="false" aria-controls="ssz-mini-cart">
 				<?php echo ssz_icon( 'bag' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 				<span class="ssz-cart-label"><?php esc_html_e( 'Bag', 'swimshop-zimbabwe' ); ?></span>
 				<span class="ssz-cart-count" aria-label="<?php echo esc_attr( sprintf( __( '%d items in cart', 'swimshop-zimbabwe' ), ssz_cart_count() ) ); ?>"><?php echo esc_html( ssz_cart_count() ); ?></span>
@@ -49,4 +49,5 @@
 
 	<?php get_template_part( 'template-parts/header/mobile-navigation' ); ?>
 	<?php get_template_part( 'template-parts/header/search-panel' ); ?>
+	<?php get_template_part( 'template-parts/cart/mini-cart-drawer' ); ?>
 </header>

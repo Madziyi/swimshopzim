@@ -27,6 +27,7 @@
 		document.dispatchEvent(new CustomEvent('ssz:close-menu'));
 		document.dispatchEvent(new CustomEvent('ssz:close-desktop-menus'));
 		document.dispatchEvent(new CustomEvent('ssz:close-filters'));
+		document.dispatchEvent(new CustomEvent('ssz:close-cart'));
 		panel.hidden = false;
 		openButton.setAttribute('aria-expanded', 'true');
 		document.body.classList.add('ssz-search-active');

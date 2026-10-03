@@ -371,3 +371,25 @@ The final correction advanced the theme to `0.8.0`, replaced the invalid search 
 DECISION
 STORE-008 is accepted. Pull request #7 was merged to `main` at merge commit `7356d95ee40b439533755d2f18af01d95560d033`. STORE-009 — Cart and mini-cart becomes the next planned initiative.
 
+## 2026-10-02 — STORE-009 implementation and verification
+
+SCOPE
+
+Created `luna/STORE-009-cart-mini-cart` from accepted `main` SHA `4ef4bcb`. The theme advances to version `0.9.0`. STORE-010 was not started, the Cart page was not converted from its live WooCommerce Cart Block, and no Local database, cart session, upload or plugin/runtime artifact was added to the repository.
+
+IMPLEMENTATION
+
+Added a global WooCommerce-aware mini-cart drawer and Cart Block presentation layer. The header bag remains a real `/cart/` link; JavaScript progressively enhances it into a right-side dialog with Woo fragment rendering, Store API quantity/remove mutations, live count/subtotal refresh, readable variable-product labels, exact bag/checkout/cart/continue-shopping actions, empty state, loading/error status, focus trapping/restoration, Escape/backdrop close, body scroll lock and shared one-overlay coordination. Normal form submissions use a server session flag for delayed auto-open; WooCommerce's native `added_to_cart` event covers AJAX PDP adds. The Cart page retains native Cart Block rows, coupon disclosure and checkout behavior while receiving theme styling, a synchronized subtotal bridge and a sibling empty state. The existing New in store rail is hidden on Cart pages to keep the cart hierarchy focused.
+
+VERIFICATION
+
+Local runtime checks confirmed page ID 9 `/cart/` is the native `wp-block-woocommerce-cart` Cart Block and that WooCommerce 11.1.2 Store API/cart fragments remain authoritative. Manual browser checks covered drawer open/close, focus restoration, scroll locking, Store API plus/minus, native Cart Block quantity synchronization, Cart Block remove, search-to-cart exclusivity and simple/variable PDP additions. The Playwright harness covers all required widths and functional cart flows; the supported checks pass simple/variable add, variation labels, quantity/count/subtotal synchronization, Cart Block rendering, coupon, remove, empty states and zero console/page errors. The strengthened JavaScript-disabled pass intentionally fails the full fallback criterion: a filled Cart Block exposes no quantity/remove controls without hydration, although the real cart link/header and checkout path remain available. PHP lint, JavaScript syntax, diff checks and package verification pass.
+
+LIMITATION
+
+WooCommerce's Cart Block is JavaScript-hydrated. The branch preserves the accepted block architecture as requested and therefore cannot provide filled-cart quantity/remove controls with JavaScript disabled; no-JavaScript visitors retain real cart navigation and the server-rendered empty state. A shortcode replacement would be a separate architecture decision for Sol.
+
+HANDOFF
+
+Supported implementation and verification are complete on `luna/STORE-009-cart-mini-cart`; STORE-009 remains Partial because the accepted live Cart Block cannot satisfy the filled-cart no-JavaScript quantity/remove fallback. The branch remains unmerged and awaits Sol's architecture decision/review. STORE-010 has not started.
+
