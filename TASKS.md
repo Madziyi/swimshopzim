@@ -7,7 +7,7 @@
 - [x] STORE-005 — Product cards
 - [x] STORE-006 — Shop/category pages
 - [x] STORE-007 — Product page
-- [ ] STORE-008 — Search
+- [x] STORE-008 — Search
 - [ ] STORE-009 — Cart and mini-cart
 - [ ] STORE-010 — Checkout styling
 - [ ] STORE-011 — Customer account styling
