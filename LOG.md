@@ -429,3 +429,14 @@ The current WooCommerce Cart Block remains authoritative. Its filled-cart quanti
 DECISION
 STORE-009 is accepted. Pull request #8 was merged to `main` at merge commit `524e007bc95bd526e6764904912339472a526577`. STORE-010 — Checkout styling becomes the next planned initiative.
 
+## 2026-10-03 — STORE-010 deferred
+
+DECISION
+Defer STORE-010 — Checkout styling. No STORE-010 implementation branch was started, no checkout architecture was changed, and the accepted STORE-009 state remains the current storefront baseline.
+
+SCOPE
+Checkout styling will be revisited later when the project is ready to address payment/shipping configuration and checkout presentation together. The milestone remains incomplete rather than accepted.
+
+NEXT
+Advance active planning to STORE-011 — Customer account styling. STORE-012 — Responsive polish follows STORE-011.
+
