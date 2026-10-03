@@ -1,10 +1,8 @@
 # Current Initiative
 
-**Active Initiative:** STORE-009 — Cart and mini-cart
-**Status:** IN IMPLEMENTATION
-**Owner:** Luna
+**Active Initiative:** STORE-010 — Checkout styling
+**Status:** PLANNED / awaiting execution approval
+**Owner:** Sol until execution is handed to Luna
 
-**Previous:** STORE-008 — Search
-**Next:** STORE-010 — Checkout styling
-
-**Latest handoff:** STORE-009 review corrections are complete on `luna/STORE-009-cart-mini-cart`; Sol accepted the documented no-JavaScript filled Cart Block quantity/remove limitation. The branch is unmerged, and STORE-010 has not started.
+**Previous:** STORE-009 — Cart and mini-cart
+**Next:** STORE-011 — Customer account styling
