@@ -571,6 +571,7 @@ const inspectCartSurface = async (page) => {
   const state = {
     configured: false,
     href: false,
+    ariaControlsTarget: false,
     opened: false,
     heading: false,
     empty: false,
@@ -589,6 +590,8 @@ const inspectCartSurface = async (page) => {
   state.configured = true;
   const href = await cartLink.getAttribute('href');
   state.href = Boolean(href && new URL(href, baseUrl).pathname.replace(/\/$/, '').endsWith('/cart'));
+  const controlsId = await cartLink.getAttribute('aria-controls');
+  state.ariaControlsTarget = Boolean(controlsId && await page.locator(`#${controlsId}`).count() === 1);
   await cartLink.click();
   await page.waitForTimeout(100);
   state.opened = await drawer.isVisible() && await cartLink.getAttribute('aria-expanded') === 'true';
@@ -608,6 +611,7 @@ const inspectCartFunctional = async (browser) => {
   const result = {
     headerBag: false,
     autoOpen: false,
+    ajaxAddSingleOpen: false,
     simpleAdd: false,
     variableAdd: false,
     variationLabels: false,
@@ -615,16 +619,35 @@ const inspectCartFunctional = async (browser) => {
     quantityMinus: false,
     subtotalRefresh: false,
     countRefresh: false,
+    duplicateMutationGuard: false,
     fullCart: false,
     coupon: false,
     removeItem: false,
     emptyDrawer: false,
     emptyCart: false,
+    emptyCartSingleState: false,
     checkout: false,
     viewCart: false,
     continueShopping: false,
-    noJs: false,
+    noJs: {
+      headerCartLink: false,
+      cartPage: false,
+      checkoutPath: false,
+      filledQuantityControl: 'UNSUPPORTED',
+      filledRemoveControl: 'UNSUPPORTED',
+    },
     oneOverlay: false,
+    overlay: {
+      cartSearch: false,
+      searchCart: false,
+      cartFilters: false,
+      filtersCart: false,
+      cartMobileMenu: false,
+      mobileMenuCart: false,
+      desktopMegaConfigured: false,
+      cartDesktopMega: false,
+      desktopMegaCart: false,
+    },
     consoleErrors: [],
     pageErrors: [],
   };
@@ -632,6 +655,10 @@ const inspectCartFunctional = async (browser) => {
   const page = await context.newPage();
   page.on('console', (message) => { if (message.type() === 'error') result.consoleErrors.push(message.text()); });
   page.on('pageerror', (error) => result.pageErrors.push(error.message));
+  let cartMutationRequests = 0;
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && /\/wc\/store\/v1\/cart\/(update-item|remove-item)/.test(request.url())) cartMutationRequests += 1;
+  });
 
   try {
     await page.goto(new URL('product/store-005-test-simple-performance-suit/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
@@ -644,15 +671,36 @@ const inspectCartFunctional = async (browser) => {
     result.simpleAdd = await page.locator('.ssz-mini-cart-item').filter({ hasText: 'STORE-005 TEST Simple Performance Suit' }).count() === 1;
     result.checkout = await page.locator('.ssz-mini-cart-actions').getByRole('link', { name: 'Checkout', exact: true }).count() === 1;
     result.viewCart = await page.locator('.ssz-mini-cart-actions').getByRole('link', { name: 'View cart', exact: true }).count() === 1;
-    result.continueShopping = await page.locator('[data-cart-close]').count() >= 2;
+
+    await page.locator('[data-cart-close]').first().click();
+    await page.waitForTimeout(100);
+    await page.evaluate(() => {
+      window.__sszCartOpenTransitions = 0;
+      const drawerElement = document.querySelector('[data-cart-drawer]');
+      window.__sszCartOpenObserver = new MutationObserver((mutations) => {
+        window.__sszCartOpenTransitions += mutations.filter((mutation) => mutation.attributeName === 'aria-hidden' && mutation.target.getAttribute('aria-hidden') === 'false').length;
+      });
+      window.__sszCartOpenObserver.observe(drawerElement, { attributes: true, attributeFilter: ['aria-hidden'] });
+      window.jQuery(document.body).trigger('added_to_cart', [{}, 'uat-cart-hash', null]);
+    });
+    await page.waitForTimeout(300);
+    result.ajaxAddSingleOpen = await page.locator('[data-cart-drawer]').isVisible() && await page.evaluate(() => window.__sszCartOpenTransitions === 1);
+    await page.evaluate(() => window.__sszCartOpenObserver?.disconnect());
 
     const firstMiniItem = page.locator('.ssz-mini-cart-item').first();
     const initialSubtotal = await page.locator('[data-mini-cart-subtotal]').innerText();
-    await firstMiniItem.locator('[data-cart-action="increase"]').click();
+    const requestsBeforePlus = cartMutationRequests;
+    await firstMiniItem.locator('[data-cart-action="increase"]').dblclick({ force: true });
     await page.waitForTimeout(1200);
     result.quantityPlus = await firstMiniItem.locator('[data-cart-quantity-input]').inputValue() === '2';
+    result.duplicateMutationGuard = cartMutationRequests - requestsBeforePlus === 1;
     result.countRefresh = await page.locator('.ssz-cart-count').innerText() === '2';
     result.subtotalRefresh = await page.locator('[data-mini-cart-subtotal]').innerText() !== initialSubtotal;
+    await page.locator('.ssz-mini-cart-continue[data-cart-close]').click();
+    await page.waitForTimeout(100);
+    result.continueShopping = await page.locator('[data-cart-drawer]').isHidden() && await page.locator('.ssz-cart-link').getAttribute('aria-expanded') === 'false' && await page.evaluate(() => document.activeElement?.matches('.ssz-cart-link') ?? false);
+    await page.locator('.ssz-cart-link').click();
+    await page.waitForTimeout(100);
     await firstMiniItem.locator('[data-cart-action="decrease"]').click();
     await page.waitForTimeout(1000);
     result.quantityMinus = await firstMiniItem.locator('[data-cart-quantity-input]').inputValue() === '1';
@@ -691,6 +739,75 @@ const inspectCartFunctional = async (browser) => {
     await page.goto(new URL('cart/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 }).catch(() => {});
     await page.waitForTimeout(1500);
     result.emptyCart = await page.locator('[data-ssz-cart-empty-state]').isVisible() && await page.getByRole('heading', { name: 'Your cart is empty', exact: true }).count() === 1 && await page.getByRole('link', { name: 'Shop all', exact: true }).count() === 1 && await page.locator('.wp-block-product-new').evaluate((element) => getComputedStyle(element).display === 'none');
+    result.emptyCartSingleState = result.emptyCart && !await visible(page.locator('.wc-block-cart__empty-cart__title')) && !(await page.locator('body').innerText()).includes('Your cart is currently empty!');
+
+    await page.goto(new URL('./', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(300);
+    const cartLink = page.locator('.ssz-cart-link');
+    const drawer = page.locator('[data-cart-drawer]');
+    const searchToggle = page.locator('[data-search-toggle]');
+    const searchPanel = page.locator('[data-search-panel]');
+    const cartLockCleared = () => page.evaluate(() => !document.documentElement.classList.contains('ssz-cart-open') && !document.body.classList.contains('ssz-cart-open'));
+    const cartClosedState = async () => drawer.isHidden() && await cartLink.getAttribute('aria-expanded') === 'false' && await cartLockCleared();
+
+    await cartLink.click();
+    await page.waitForTimeout(100);
+    await searchToggle.dispatchEvent('click');
+    await page.waitForTimeout(100);
+    result.overlay.cartSearch = await cartClosedState() && await searchPanel.isVisible() && await searchToggle.getAttribute('aria-expanded') === 'true';
+    await cartLink.dispatchEvent('click');
+    await page.waitForTimeout(100);
+    result.overlay.searchCart = await drawer.isVisible() && await searchPanel.isHidden() && await searchToggle.getAttribute('aria-expanded') === 'false' && await page.evaluate(() => !document.body.classList.contains('ssz-search-active'));
+
+    await page.goto(new URL('shop/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(300);
+    const filterToggle = page.locator('[data-archive-filters-toggle]');
+    const filterPanel = page.locator('.ssz-filter-drawer__panel');
+    if (await filterToggle.count() && await filterToggle.isVisible()) {
+      await cartLink.click();
+      await page.waitForTimeout(100);
+      await filterToggle.dispatchEvent('click');
+      await page.waitForTimeout(100);
+      result.overlay.cartFilters = await cartClosedState() && await filterPanel.isVisible() && await filterToggle.getAttribute('aria-expanded') === 'true' && await page.evaluate(() => document.documentElement.classList.contains('ssz-filter-open'));
+      await cartLink.dispatchEvent('click');
+      await page.waitForTimeout(100);
+      result.overlay.filtersCart = await drawer.isVisible() && await filterPanel.isHidden() && await filterToggle.getAttribute('aria-expanded') === 'false' && await page.evaluate(() => !document.documentElement.classList.contains('ssz-filter-open') && !document.body.classList.contains('ssz-filter-open'));
+    }
+
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.goto(new URL('./', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(300);
+    const menuToggle = page.locator('[data-menu-toggle]');
+    const mobileNav = page.locator('[data-mobile-nav]');
+    if (await menuToggle.count() && await menuToggle.isVisible()) {
+      await cartLink.click();
+      await page.waitForTimeout(100);
+      await menuToggle.dispatchEvent('click');
+      await page.waitForTimeout(100);
+      result.overlay.cartMobileMenu = await cartClosedState() && await mobileNav.isVisible() && await menuToggle.getAttribute('aria-expanded') === 'true' && await page.evaluate(() => document.documentElement.classList.contains('ssz-menu-open'));
+      await cartLink.dispatchEvent('click');
+      await page.waitForTimeout(100);
+      result.overlay.mobileMenuCart = await drawer.isVisible() && await mobileNav.isHidden() && await menuToggle.getAttribute('aria-expanded') === 'false' && await page.evaluate(() => !document.documentElement.classList.contains('ssz-menu-open') && !document.body.classList.contains('ssz-menu-open'));
+    }
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(new URL('./', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(300);
+    const desktopToggles = page.locator('[data-primary-nav] > .ssz-primary-menu > .ssz-nav-item--has-children > [data-nav-toggle]');
+    result.overlay.desktopMegaConfigured = await desktopToggles.count() > 0;
+    if (result.overlay.desktopMegaConfigured) {
+      const desktopToggle = desktopToggles.first();
+      const desktopPanelId = await desktopToggle.getAttribute('aria-controls');
+      const desktopPanel = page.locator(`#${desktopPanelId}`);
+      await cartLink.click();
+      await page.waitForTimeout(100);
+      await desktopToggle.dispatchEvent('click');
+      await page.waitForTimeout(100);
+      result.overlay.cartDesktopMega = await cartClosedState() && await desktopPanel.isVisible() && await desktopToggle.getAttribute('aria-expanded') === 'true';
+      await cartLink.dispatchEvent('click');
+      await page.waitForTimeout(300);
+      result.overlay.desktopMegaCart = await drawer.isVisible() && await desktopPanel.isHidden() && await desktopToggle.getAttribute('aria-expanded') === 'false';
+    }
   } catch (error) {
     result.pageErrors.push(error.message);
   } finally {
@@ -705,7 +822,11 @@ const inspectCartFunctional = async (browser) => {
     await noJsPage.locator('form.cart button[name="add-to-cart"]').click();
     await noJsPage.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
     await noJsPage.goto(new URL('cart/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
-    result.noJs = await noJsPage.locator('.ssz-cart-link').getAttribute('href').then((href) => Boolean(href?.includes('/cart/'))) && await noJsPage.locator('main h1').count() === 1 && await noJsPage.locator('[data-cart-drawer]').count() === 1 && await noJsPage.locator('.wc-block-cart-items__row').count() > 0 && await noJsPage.locator('.wc-block-components-quantity-selector__input, input.qty, [name="update_cart"]').count() > 0 && await noJsPage.locator('.wc-block-cart-item__remove-link, a.remove').count() > 0 && await noJsPage.locator('.wc-block-cart__submit-button, a[href*="/checkout/"]').count() > 0;
+    result.noJs.headerCartLink = await noJsPage.locator('.ssz-cart-link').getAttribute('href').then((href) => Boolean(href?.includes('/cart/')));
+    result.noJs.cartPage = await noJsPage.locator('main h1').count() === 1 && await noJsPage.locator('[data-cart-drawer]').count() === 1;
+    result.noJs.checkoutPath = await noJsPage.locator('.wc-block-cart__submit-button, a[href*="/checkout/"]').count() > 0;
+    result.noJs.filledQuantityControl = await noJsPage.locator('.wc-block-components-quantity-selector__input, input.qty, [name="update_cart"]').count() > 0 ? 'PASS' : 'UNSUPPORTED';
+    result.noJs.filledRemoveControl = await noJsPage.locator('.wc-block-cart-item__remove-link, a.remove').count() > 0 ? 'PASS' : 'UNSUPPORTED';
   } catch (error) {
     result.pageErrors.push(error.message);
   } finally {
@@ -906,6 +1027,7 @@ let pdpFallback = {
 let cartFunctional = {
   headerBag: false,
   autoOpen: false,
+  ajaxAddSingleOpen: false,
   simpleAdd: false,
   variableAdd: false,
   variationLabels: false,
@@ -913,16 +1035,35 @@ let cartFunctional = {
   quantityMinus: false,
   subtotalRefresh: false,
   countRefresh: false,
+  duplicateMutationGuard: false,
   fullCart: false,
   coupon: false,
   removeItem: false,
   emptyDrawer: false,
   emptyCart: false,
+  emptyCartSingleState: false,
   checkout: false,
   viewCart: false,
   continueShopping: false,
-  noJs: false,
+  noJs: {
+    headerCartLink: false,
+    cartPage: false,
+    checkoutPath: false,
+    filledQuantityControl: 'UNSUPPORTED',
+    filledRemoveControl: 'UNSUPPORTED',
+  },
   oneOverlay: false,
+  overlay: {
+    cartSearch: false,
+    searchCart: false,
+    cartFilters: false,
+    filtersCart: false,
+    cartMobileMenu: false,
+    mobileMenuCart: false,
+    desktopMegaConfigured: false,
+    cartDesktopMega: false,
+    desktopMegaCart: false,
+  },
   consoleErrors: [],
   pageErrors: [],
 };
@@ -1694,7 +1835,7 @@ const failures = results.filter((result) => {
     !result.pdp.themeVisible || result.pdp.responseStatus === null || result.pdp.responseStatus >= 400 || result.pdp.navigationError || result.pdp.horizontalOverflow || result.pdp.consoleErrors.length || result.pdp.pageErrors.length ||
     !result.pdp.product.mainFound || result.pdp.product.mainHasCardClass || result.pdp.product.mainHasFitClass || !result.pdp.product.breadcrumb || !result.pdp.product.galleryFound || result.pdp.product.galleryImageCount < 1 || !result.pdp.product.galleryPrimaryImageLoaded || !result.pdp.product.galleryImagesHaveAlt || result.pdp.product.galleryLinks < 1 || (result.width >= 1121 && !result.pdp.product.galleryUsesGrid) || (result.width <= 767 && !result.pdp.product.galleryUsesScrollSnap) || result.pdp.product.galleryHasFlexViewport || result.pdp.product.galleryTransform !== 'none' || !result.pdp.product.summaryFound || !result.pdp.product.brand || result.pdp.product.brandColor !== 'rgb(35, 136, 173)' || result.pdp.product.titleCount !== 1 || !result.pdp.product.price || !result.pdp.product.addToBag || !result.pdp.product.nativeColour || !result.pdp.product.nativeSize || !result.pdp.product.colourControl || !result.pdp.product.sizeControl || !result.pdp.product.nativeColourRowEnhanced || !result.pdp.product.nativeSizeRowEnhanced || result.pdp.product.visibleColourLabelCount !== 1 || result.pdp.product.visibleSizeLabelCount !== 1 || !result.pdp.product.noDuplicateNativeColourLabel || !result.pdp.product.noDuplicateNativeSizeLabel || !result.pdp.product.customColourVisible || !result.pdp.product.customSizeVisible || !result.pdp.product.nativeColourVisuallyHidden || !result.pdp.product.nativeSizeVisuallyHidden || !result.pdp.product.nativeRowsNoMeaningfulBlankGeometry || !result.pdp.product.nativeResetPresent || !result.pdp.product.unsupportedNativeAttributesVisible || result.pdp.product.details.length !== 2 || result.pdp.product.details.includes('Material & care') || result.pdp.product.hasDefaultTabs || result.pdp.product.hasDefaultExcerpt || result.pdp.product.hasDefaultMeta || result.pdp.product.hasMaterialCare || !result.pdp.product.relatedFound || !result.pdp.product.relatedCardContract || !result.pdp.product.relatedRetailPresentation || !result.pdp.product.relatedSwatchContract || !result.pdp.interactions.initialRange || !result.pdp.interactions.initialDisabled || !result.pdp.interactions.colourSync || !result.pdp.interactions.colourName || !result.pdp.interactions.sizeSync || !result.pdp.interactions.asymmetricDisabled || !result.pdp.interactions.disabledCannotActivate || !result.pdp.interactions.variationFound || !result.pdp.interactions.variationPrice || !result.pdp.interactions.variationImage || !result.pdp.interactions.resetSync || !result.pdp.interactions.sizeGuide || !result.pdp.interactions.shippingReturns || !result.pdp.interactions.accordionsKeyboard || !result.pdp.relatedSwatchInteraction.configured || !result.pdp.relatedSwatchInteraction.semanticContract || (!result.pdp.relatedSwatchInteraction.selected && !result.pdp.relatedSwatchInteraction.availableOnlySafe) || !result.pdp.relatedSwatchInteraction.noNavigation || !result.pdp.relatedSwatchInteraction.noNestedInteractive ||
     !result.headerMode.colorLogoVisible || !result.headerMode.colorLogoLoaded || !result.headerMode.cartVisible ||
-    !result.cart.configured || !result.cart.href || !result.cart.opened || !result.cart.heading || !result.cart.empty || !result.cart.focusInside || !result.cart.bodyScrollLock || !result.cart.ariaExpanded || !result.cart.closedByEscape || !result.cart.focusRestored || !result.cart.noOverflow ||
+    !result.cart.configured || !result.cart.href || !result.cart.ariaControlsTarget || !result.cart.opened || !result.cart.heading || !result.cart.empty || !result.cart.focusInside || !result.cart.bodyScrollLock || !result.cart.ariaExpanded || !result.cart.closedByEscape || !result.cart.focusRestored || !result.cart.noOverflow ||
     !result.search.opened || !result.search.inputFocused || !result.search.closed || !result.search.focusRestored ||
     mobileFailure || desktopFailure || missingConfiguredMenu ||
     !result.stickyHeader.aboveContent || !result.stickyHeader.announcementScrolledAway ||
@@ -1718,7 +1859,9 @@ if (!searchFunctional.form.opened || !searchFunctional.form.focused || !searchFu
   process.exitCode = 1;
 }
 
-if (!cartFunctional.headerBag || !cartFunctional.autoOpen || !cartFunctional.simpleAdd || !cartFunctional.variableAdd || !cartFunctional.variationLabels || !cartFunctional.quantityPlus || !cartFunctional.quantityMinus || !cartFunctional.subtotalRefresh || !cartFunctional.countRefresh || !cartFunctional.fullCart || !cartFunctional.coupon || !cartFunctional.removeItem || !cartFunctional.emptyDrawer || !cartFunctional.emptyCart || !cartFunctional.checkout || !cartFunctional.viewCart || !cartFunctional.continueShopping || !cartFunctional.noJs || !cartFunctional.oneOverlay || cartFunctional.consoleErrors.length || cartFunctional.pageErrors.length) {
+const noJsSupported = cartFunctional.noJs.headerCartLink && cartFunctional.noJs.cartPage && cartFunctional.noJs.checkoutPath;
+const overlayFunctional = cartFunctional.overlay.cartSearch && cartFunctional.overlay.searchCart && cartFunctional.overlay.cartFilters && cartFunctional.overlay.filtersCart && cartFunctional.overlay.cartMobileMenu && cartFunctional.overlay.mobileMenuCart && (!cartFunctional.overlay.desktopMegaConfigured || (cartFunctional.overlay.cartDesktopMega && cartFunctional.overlay.desktopMegaCart));
+if (!cartFunctional.headerBag || !cartFunctional.autoOpen || !cartFunctional.ajaxAddSingleOpen || !cartFunctional.simpleAdd || !cartFunctional.variableAdd || !cartFunctional.variationLabels || !cartFunctional.quantityPlus || !cartFunctional.quantityMinus || !cartFunctional.duplicateMutationGuard || !cartFunctional.subtotalRefresh || !cartFunctional.countRefresh || !cartFunctional.fullCart || !cartFunctional.coupon || !cartFunctional.removeItem || !cartFunctional.emptyDrawer || !cartFunctional.emptyCart || !cartFunctional.emptyCartSingleState || !cartFunctional.checkout || !cartFunctional.viewCart || !cartFunctional.continueShopping || !noJsSupported || !overlayFunctional || !cartFunctional.oneOverlay || cartFunctional.consoleErrors.length || cartFunctional.pageErrors.length) {
   console.error('Cart functional UAT failed');
   process.exitCode = 1;
 }

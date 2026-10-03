@@ -391,5 +391,27 @@ WooCommerce's Cart Block is JavaScript-hydrated. The branch preserves the accept
 
 HANDOFF
 
-Supported implementation and verification are complete on `luna/STORE-009-cart-mini-cart`; STORE-009 remains Partial because the accepted live Cart Block cannot satisfy the filled-cart no-JavaScript quantity/remove fallback. The branch remains unmerged and awaits Sol's architecture decision/review. STORE-010 has not started.
+Supported implementation and verification were complete on `luna/STORE-009-cart-mini-cart`; the initial handoff recorded STORE-009 as Partial pending Sol's architecture decision on the filled-cart no-JavaScript limitation. The branch remained unmerged and STORE-010 had not started.
+
+## 2026-10-03 — STORE-009 Sol review corrections
+
+SCOPE
+
+Continued on the same `luna/STORE-009-cart-mini-cart` branch from reviewed commit `f1591c57ba0d5e4d8fbb4227cc41bbb350b1b609`. No merge was performed and STORE-010 was not started.
+
+CORRECTIONS
+
+Added the real `ssz-mini-cart` drawer target for the header `aria-controls` contract; made Continue shopping use stable drawer delegation after Woo fragment replacement; added server-backed branded-empty-state coordination that suppresses the native Cart Block empty title and New in Store rail without JavaScript-only replacement; added an in-flight Store API mutation guard; reduced the Woo AJAX add listener to one namespaced `added_to_cart.sszCart` registration; and strengthened overlay UAT in both directions for search, filters, mobile menu and configured desktop mega menus with hidden/ARIA/scroll-lock assertions. The Cart Block architecture was preserved.
+
+VERIFICATION
+
+The final Local Playwright run passed STORE-003–009 regression coverage at `360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440, 1920px`, including zero horizontal overflow, zero console/page errors, cart fragment replacement, duplicate-mutation protection, single branded empty state, all configured overlay directions and the real `aria-controls` target. Functional cart UAT passed simple/variable add, variation labels, quantity/count/subtotal synchronization, coupon, remove, checkout/view-cart/Continue shopping and AJAX single-open behavior. No-JavaScript facts are explicit: header cart link PASS, Cart page PASS, checkout path PASS, filled quantity control UNSUPPORTED, filled remove control UNSUPPORTED. PHP lint, JavaScript syntax, JSON, diff and package checks passed; the package has one top-level `swimshop-zimbabwe/` directory and contains the corrected cart assets.
+
+DECISION
+
+Sol accepted the no-JavaScript filled Cart Block quantity/remove limitation as an architectural consequence of retaining the live WooCommerce Cart Block. STORE-009 review corrections are Complete; the limitation is documented and is not a failure. The branch remains unmerged and STORE-010 has not started.
+
+HANDOFF
+
+`STORE-009 REVIEW CORRECTION: Complete`. New correction commit and push will be recorded by Git history on `luna/STORE-009-cart-mini-cart`; previous reviewed commit: `f1591c57ba0d5e4d8fbb4227cc41bbb350b1b609`.
 

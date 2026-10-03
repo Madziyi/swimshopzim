@@ -271,6 +271,8 @@ html.ssz-cart-open body { overflow: hidden; }
 .ssz-cart-empty-state[hidden] { display: none; }
 .ssz-cart-empty-state h2 { font-size: clamp(1.6rem, 3vw, 2.4rem); margin: 0; text-transform: uppercase; }
 .ssz-cart-empty-state p { color: var(--ssz-color-text-muted); margin: 0; }
+.ssz-cart-has-branded-empty .wc-block-cart__empty-cart__title,
+.ssz-cart-native-empty-suppressed { display: none !important; }
 .woocommerce-cart .wp-block-woocommerce-cart .wc-block-grid.wp-block-product-new { display: none; }
 
 @media (max-width: 1024px) {

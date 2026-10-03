@@ -195,7 +195,7 @@ function ssz_render_mini_cart_drawer() {
 		WC()->session->set( 'ssz_cart_auto_open', false );
 	}
 	?>
-	<div class="ssz-mini-cart" data-cart-drawer hidden aria-hidden="true" data-auto-open="<?php echo $auto_open ? 'true' : 'false'; ?>">
+	<div id="ssz-mini-cart" class="ssz-mini-cart" data-cart-drawer hidden aria-hidden="true" data-auto-open="<?php echo $auto_open ? 'true' : 'false'; ?>">
 		<button class="ssz-mini-cart__backdrop" type="button" data-cart-backdrop aria-label="<?php esc_attr_e( 'Close your bag', 'swimshop-zimbabwe' ); ?>"></button>
 		<aside class="ssz-mini-cart__panel" role="dialog" aria-modal="true" aria-labelledby="ssz-mini-cart-title" data-cart-panel tabindex="-1">
 			<div class="ssz-mini-cart__header">
@@ -284,3 +284,20 @@ function ssz_cart_block_empty_state( $block_content, $block ) { // phpcs:ignore 
 	return $block_content . $state;
 }
 add_filter( 'render_block_woocommerce/cart', 'ssz_cart_block_empty_state', 10, 2 );
+
+/**
+ * Add a server-rendered body state so the native Cart Block empty message can
+ * be suppressed alongside the theme-owned branded empty state.
+ *
+ * @param array $classes Existing body classes.
+ * @return array
+ */
+function ssz_cart_body_class( $classes ) {
+	if ( ! function_exists( 'is_cart' ) || ! is_cart() || ! ssz_cart_is_available() || ! WC()->cart->is_empty() ) {
+		return $classes;
+	}
+
+	$classes[] = 'ssz-cart-has-branded-empty';
+	return $classes;
+}
+add_filter( 'body_class', 'ssz_cart_body_class' );

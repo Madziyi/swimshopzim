@@ -1,5 +1,6 @@
 /* WooCommerce storefront foundation — intentionally hook-first, with no copied Woo templates. */
 
+body.woocommerce { display: block; min-width: 0; width: 100%; }
 .ssz-commerce-main { padding-top: clamp(2rem, 5vw, 5rem); padding-bottom: clamp(4rem, 8vw, 8rem); }
 .woocommerce .woocommerce-breadcrumb { margin: 0 0 var(--ssz-space-lg); color: var(--ssz-color-text-muted); font-size: var(--ssz-font-size-label); }
 .woocommerce .woocommerce-breadcrumb a { color: var(--ssz-color-text); }

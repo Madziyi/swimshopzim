@@ -2,13 +2,13 @@
   const drawer = document.querySelector('[data-cart-drawer]');
   const headerLink = document.querySelector('.ssz-cart-link');
   const panel = drawer?.querySelector('[data-cart-panel]');
-  const closeButtons = drawer?.querySelectorAll('[data-cart-close]') || [];
   const backdrop = drawer?.querySelector('[data-cart-backdrop]');
   const status = drawer?.querySelector('[data-cart-status]');
 
   if (!drawer || !panel || !headerLink) return;
 
   let lastFocused = headerLink;
+  let mutationInFlight = false;
   let fragmentRefreshPending = false;
   let lastFragmentRefresh = 0;
 
@@ -100,10 +100,11 @@
 
   const mutateCart = async (item, action, quantity) => {
     const key = item?.dataset.cartItemKey;
-    if (!key || !window.SSZCart?.storeApiUrl || !window.SSZCart?.storeApiNonce) return;
+    if (mutationInFlight || !key || !window.SSZCart?.storeApiUrl || !window.SSZCart?.storeApiNonce) return;
 
     const endpoint = action === 'remove' ? 'cart/remove-item' : 'cart/update-item';
     const body = action === 'remove' ? { key } : { key, quantity };
+    mutationInFlight = true;
     setStatus('');
     setLoading(item, true);
 
@@ -124,13 +125,19 @@
       setStatus('We could not update your bag. Please try again.');
     } finally {
       setLoading(item, false);
+      mutationInFlight = false;
     }
   };
 
   const updateEmptyCartState = () => {
     const emptyState = document.querySelector('[data-ssz-cart-empty-state]');
     const blockEmpty = Boolean(document.querySelector('.wc-block-cart__empty-cart__title'));
-    if (emptyState) emptyState.hidden = !blockEmpty;
+    const brandedEmpty = Boolean(emptyState && blockEmpty);
+    if (emptyState) emptyState.hidden = !brandedEmpty;
+    document.body.classList.toggle('ssz-cart-has-branded-empty', brandedEmpty);
+    document.querySelectorAll('.wc-block-cart__empty-cart__title').forEach((title) => {
+      title.classList.toggle('ssz-cart-native-empty-suppressed', brandedEmpty);
+    });
   };
 
   const normalizeCartBlockCopy = () => {
@@ -157,14 +164,21 @@
     else close();
   });
 
-  closeButtons.forEach((button) => button.addEventListener('click', () => close()));
   backdrop?.addEventListener('click', () => close());
 
   drawer.addEventListener('click', (event) => {
+    const closeControl = event.target.closest('[data-cart-close]');
+    if (closeControl) {
+      event.preventDefault();
+      close();
+      return;
+    }
+
     const action = event.target.closest('[data-cart-action]');
     if (!action) return;
     const item = action.closest('[data-cart-item-key]');
     if (!item) return;
+    if (mutationInFlight) return;
 
     if (action.dataset.cartAction === 'remove') {
       event.preventDefault();
@@ -184,6 +198,7 @@
   drawer.addEventListener('change', (event) => {
     const input = event.target.closest('[data-cart-quantity-input]');
     if (!input) return;
+    if (mutationInFlight) return;
     const item = input.closest('[data-cart-item-key]');
     if (!item) return;
     const quantity = parseQuantity(input);
@@ -217,7 +232,7 @@
   });
 
   if (window.jQuery) {
-    window.jQuery(document.body).on('added_to_cart.sszCart added_to_cart', () => {
+    window.jQuery(document.body).on('added_to_cart.sszCart', () => {
       window.setTimeout(() => open(headerLink), 40);
     });
   }
