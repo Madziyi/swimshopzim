@@ -563,6 +563,10 @@ function ssz_render_archive_toolbar() {
 	ob_start();
 	woocommerce_catalog_ordering();
 	$ordering = ob_get_clean();
+	if ( ssz_is_product_search() ) {
+		$ordering = preg_replace( '/(<input\s+type="hidden"\s+name="s")[^>]*>/', '<input type="hidden" name="s" value="' . esc_attr( get_search_query( false ) ) . '">', $ordering );
+		$ordering = preg_replace( '/(<input\s+type="hidden"\s+name="post_type")[^>]*>/', '<input type="hidden" name="post_type" value="product">', $ordering );
+	}
 	echo $ordering . '</div></div>';
 
 	ssz_render_archive_active_filters();

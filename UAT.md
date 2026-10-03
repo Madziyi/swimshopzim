@@ -99,24 +99,26 @@ For fresh-install fallback verification, use a disposable Local database or a te
 
 ## Search
 
-- Ivory Search FREE v5.5.18 is the Local-only backend candidate for the existing header form. The form is product-only, searches product title/content/excerpt and configured product taxonomy titles, returns predictive AJAX suggestions and submits to the product results archive with `s` and `post_type=product` preserved. The theme owns the shell, focus/overlay behavior, result styling and archive presentation; Ivory owns matching, AJAX and indexing.
+- Ivory Search FREE v5.5.18 is the Local-only backend candidate for the existing header form. Verified support covers product-only title search, partial-word matching, category matching, native `product_brand` matching, native `pa_colour` matching, predictive AJAX suggestions, submitted product-only results and the real Ivory image/title/price/excerpt markup. The theme owns the shell, focus/overlay behavior, result styling and archive presentation; Ivory owns matching, AJAX and indexing.
 - Required matrix passed in the Local fixture catalog:
 
   | Query | Observed result | Status |
   | --- | --- | --- |
   | `Variable Training Suit` | One matching product | PASS |
   | `train` | Six product suggestions plus More Results | PASS |
-  | `goggles` | One Goggles-category product | PASS |
+  | `goggles` | One Goggles-category product | PASS — category matching |
   | Enter/submit `train` | `?s=train&post_type=product` product archive | PASS |
   | `Sample Page` | No results | PASS — pages excluded |
-  | `arena` | Six Arena products | PASS — bonus |
-  | `navy` | Six Navy-assigned products | PASS — bonus |
-  | `medium` | No result | LIMITATION — free taxonomy-title behavior |
-  | `m` | Broad six-product result set | LIMITATION — partial matching |
+  | `arena` | Six Arena products | PASS — native `product_brand` matching |
+  | `navy` | Six Navy-assigned products | PASS — native `pa_colour` matching |
+  | `XL` | Three products | PASS — distinct size term check |
+  | `medium` | No result | LIMITATION — no `Medium` term exists in the fixture; actual terms are XS/S/M/L/XL |
+  | `m` | Broad six-product result set | LIMITATION — partial matching; not an exact size assertion |
   | `trainng` | No results | LIMITATION — no typo correction |
-  | representative SKU | No results | LIMITATION — fixture SKU fields are blank/free backend limitation |
+  | `SSZ-STORE008-SKU-001` | No results after assigning the real Local-only SKU | LIMITATION — exact SKU matching is not supported by this free configuration |
 
-- Search result pages reuse the STORE-006 archive structure and pass product filters, active chips, sorting, pagination and query preservation. No-results pages show the query, a visible search-again form and Shop all fallback; the generic `search.php` fallback also remains product-only.
+- Search result pages reuse the STORE-006 archive structure. Automated query-preservation checks pass for filter submission, active-chip removal, native sorting, Clear all and pagination while retaining `s=train`, `post_type=product` and selected parameters. Empty price fields are omitted from the filter GET request so active chips render reliably. No-results pages show the query, a visible search-again form and Shop all fallback; the generic `search.php` fallback also remains product-only.
+- Predictive UAT requires a real `.is-ajax-search-post.is-product .thumbnail img` element that is complete and has `naturalWidth` and `naturalHeight` greater than zero; the Local run passed all four checks.
 - Browser UAT passed at exact widths 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px. The full regression run verified header search open/close/focus restoration, navigation/filter overlay coordination, AJAX product container/title/image/price/excerpt selectors, no horizontal overflow and zero console/page errors.
 
 ## Cart

@@ -340,3 +340,23 @@ HANDOFF
 
 STORE-008 implementation and Local verification are complete on `luna/STORE-008-search`; the branch remains unmerged and is ready for Sol review. STORE-009 has not started.
 
+## 2026-10-02 — STORE-008 review corrections and final handoff
+
+SCOPE
+
+Applied only the requested review corrections on the existing `luna/STORE-008-search` branch after reviewed commit `baebf4a8fb25ed60131bf504c7435ce8dc295550`. The theme version is now `0.8.0` in both the PHP constant and stylesheet header. Replaced all invalid `--ssz-color-muted` references in `search.css` with approved `--ssz-color-text-muted`. No backend, header, AJAX, archive, card or PDP redesign was introduced.
+
+LOCAL-ONLY SKU CHECK
+
+Assigned `SSZ-STORE008-SKU-001` to existing Local product ID 72, `STORE-005 TEST Variable Training Suit`, through wp-admin only. The real title returned one product; the exact SKU returned `Nothing found`. The product/database change is runtime-only and is not tracked, exported or packaged.
+
+SEARCH AND QUERY VERIFICATION
+
+Predictive UAT now requires an actual Ivory product result image element, `complete === true`, `naturalWidth > 0` and `naturalHeight > 0`; all four checks passed. Verified matching includes title, partial word, category, native `product_brand`, native `pa_colour`, AJAX and product-only behavior. The matrix also recorded `XL` as three results, while `medium` remains a limitation because the Local fixture terms are XS/S/M/L/XL and no `Medium` term exists; short `m` is broad, typo `trainng` returns no results, and exact SKU matching is unsupported in this free configuration.
+
+Automated search-archive checks passed filter submission, active-chip removal, native sorting, Clear all and pagination with `s=train`, `post_type=product` and selected parameters preserved. Empty price inputs are omitted at filter submit so the active chip is rendered consistently. The full Playwright regression passed at 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px, including STORE-003/004/005/006/007 coverage, with zero console/page errors. PHP lint, JavaScript syntax, JSON validation, diff checks and packaging passed; the package contains no Ivory/plugin/runtime artifacts.
+
+HANDOFF
+
+STORE-008 review corrections are complete and ready for Sol review on `luna/STORE-008-search`. The branch remains unmerged, and STORE-009 has not started.
+

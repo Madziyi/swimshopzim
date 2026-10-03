@@ -76,6 +76,10 @@
   });
 
   form?.addEventListener('submit', () => {
+    form.querySelectorAll('input[name="min_price"], input[name="max_price"]').forEach((input) => {
+      if (input.value === '') input.disabled = true;
+    });
+
     const grouped = new Map();
     form.querySelectorAll('[data-archive-filter-checkbox]').forEach((input) => {
       const key = input.getAttribute('data-archive-filter-checkbox');
