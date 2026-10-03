@@ -360,3 +360,14 @@ HANDOFF
 
 STORE-008 review corrections are complete and ready for Sol review on `luna/STORE-008-search`. The branch remains unmerged, and STORE-009 has not started.
 
+## 2026-10-03 — STORE-008 Sol acceptance
+
+VERIFICATION
+Sol reviewed the complete STORE-008 branch through commit `c76828ef16d03bace15ccda966b12ecd56d13134`. Review covered the Ivory Search FREE integration boundary, existing SwimShop header search shell, predictive AJAX result styling, title/partial/category/native `product_brand`/native `pa_colour` matching, product-only submitted results, STORE-006 archive/card/filter/sort/pagination reuse, search query preservation, no-results recovery and plugin-absent/theme fallback behavior.
+
+VERIFICATION
+The final correction advanced the theme to `0.8.0`, replaced the invalid search colour token with the approved muted semantic token, added loaded predictive-image assertions, used a real Local-only SKU fixture to verify exact SKU matching remains unsupported in the free configuration, clarified actual size-term behavior, and automated preservation of `s=train` plus `post_type=product` through filters, active-chip removal, sorting, Clear all and pagination. The complete ten-width UAT and STORE-003/004/005/006/007 regressions passed, along with PHP/JavaScript/JSON/diff/package checks and confirmation that no Ivory/plugin/runtime artifacts are packaged.
+
+DECISION
+STORE-008 is accepted. Pull request #7 was merged to `main` at merge commit `7356d95ee40b439533755d2f18af01d95560d033`. STORE-009 — Cart and mini-cart becomes the next planned initiative.
+
