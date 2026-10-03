@@ -567,6 +567,276 @@ const inspectProductPageFallback = async (page) => page.evaluate(() => {
   };
 });
 
+const inspectCartSurface = async (page) => {
+  const state = {
+    configured: false,
+    href: false,
+    ariaControlsTarget: false,
+    opened: false,
+    heading: false,
+    empty: false,
+    focusInside: false,
+    bodyScrollLock: false,
+    ariaExpanded: false,
+    closedByEscape: false,
+    focusRestored: false,
+    noOverflow: false,
+  };
+  const cartLink = page.locator('.ssz-cart-link');
+  const drawer = page.locator('[data-cart-drawer]');
+  const panel = page.locator('[data-cart-panel]');
+  if (!(await cartLink.count()) || !(await drawer.count()) || !(await panel.count())) return state;
+
+  state.configured = true;
+  const href = await cartLink.getAttribute('href');
+  state.href = Boolean(href && new URL(href, baseUrl).pathname.replace(/\/$/, '').endsWith('/cart'));
+  const controlsId = await cartLink.getAttribute('aria-controls');
+  state.ariaControlsTarget = Boolean(controlsId && await page.locator(`#${controlsId}`).count() === 1);
+  await cartLink.click();
+  await page.waitForTimeout(100);
+  state.opened = await drawer.isVisible() && await cartLink.getAttribute('aria-expanded') === 'true';
+  state.heading = (await panel.locator('h2').innerText()).trim().toUpperCase() === 'YOUR BAG';
+  state.empty = (await panel.innerText()).includes('Your bag is empty.');
+  state.focusInside = await page.evaluate(() => Boolean(document.activeElement?.closest('[data-cart-panel]')));
+  state.bodyScrollLock = await page.evaluate(() => getComputedStyle(document.documentElement).overflow === 'hidden' && getComputedStyle(document.body).overflow === 'hidden');
+  state.ariaExpanded = await cartLink.getAttribute('aria-expanded') === 'true';
+  state.noOverflow = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) <= document.documentElement.clientWidth + 2);
+  await page.keyboard.press('Escape');
+  state.closedByEscape = await drawer.isHidden() && await cartLink.getAttribute('aria-expanded') === 'false';
+  state.focusRestored = await page.evaluate(() => document.activeElement?.matches('.ssz-cart-link') ?? false);
+  return state;
+};
+
+const inspectCartFunctional = async (browser) => {
+  const result = {
+    headerBag: false,
+    autoOpen: false,
+    ajaxAddSingleOpen: false,
+    simpleAdd: false,
+    variableAdd: false,
+    variationLabels: false,
+    quantityPlus: false,
+    quantityMinus: false,
+    subtotalRefresh: false,
+    countRefresh: false,
+    duplicateMutationGuard: false,
+    fullCart: false,
+    coupon: false,
+    removeItem: false,
+    emptyDrawer: false,
+    emptyCart: false,
+    emptyCartSingleState: false,
+    checkout: false,
+    viewCart: false,
+    continueShopping: false,
+    noJs: {
+      headerCartLink: false,
+      cartPage: false,
+      checkoutPath: false,
+      filledQuantityControl: 'UNSUPPORTED',
+      filledRemoveControl: 'UNSUPPORTED',
+    },
+    oneOverlay: false,
+    overlay: {
+      cartSearch: false,
+      searchCart: false,
+      cartFilters: false,
+      filtersCart: false,
+      cartMobileMenu: false,
+      mobileMenuCart: false,
+      desktopMegaConfigured: false,
+      cartDesktopMega: false,
+      desktopMegaCart: false,
+    },
+    consoleErrors: [],
+    pageErrors: [],
+  };
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await context.newPage();
+  page.on('console', (message) => { if (message.type() === 'error') result.consoleErrors.push(message.text()); });
+  page.on('pageerror', (error) => result.pageErrors.push(error.message));
+  let cartMutationRequests = 0;
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && /\/wc\/store\/v1\/cart\/(update-item|remove-item)/.test(request.url())) cartMutationRequests += 1;
+  });
+
+  try {
+    await page.goto(new URL('product/store-005-test-simple-performance-suit/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+    result.headerBag = await page.locator('.ssz-cart-link').count() === 1 && (await page.locator('.ssz-cart-link').getAttribute('href'))?.includes('/cart/');
+    await page.getByRole('button', { name: 'Add to bag', exact: true }).click();
+    await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+    await page.locator('[data-cart-drawer]').waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(300);
+    result.autoOpen = await page.locator('[data-cart-drawer]').isVisible() && (await page.locator('[data-cart-drawer] h2').innerText()).trim().toUpperCase() === 'YOUR BAG';
+    result.simpleAdd = await page.locator('.ssz-mini-cart-item').filter({ hasText: 'STORE-005 TEST Simple Performance Suit' }).count() === 1;
+    result.checkout = await page.locator('.ssz-mini-cart-actions').getByRole('link', { name: 'Checkout', exact: true }).count() === 1;
+    result.viewCart = await page.locator('.ssz-mini-cart-actions').getByRole('link', { name: 'View cart', exact: true }).count() === 1;
+
+    await page.locator('[data-cart-close]').first().click();
+    await page.waitForTimeout(100);
+    await page.evaluate(() => {
+      window.__sszCartOpenTransitions = 0;
+      const drawerElement = document.querySelector('[data-cart-drawer]');
+      window.__sszCartOpenObserver = new MutationObserver((mutations) => {
+        window.__sszCartOpenTransitions += mutations.filter((mutation) => mutation.attributeName === 'aria-hidden' && mutation.target.getAttribute('aria-hidden') === 'false').length;
+      });
+      window.__sszCartOpenObserver.observe(drawerElement, { attributes: true, attributeFilter: ['aria-hidden'] });
+      window.jQuery(document.body).trigger('added_to_cart', [{}, 'uat-cart-hash', null]);
+    });
+    await page.waitForTimeout(300);
+    result.ajaxAddSingleOpen = await page.locator('[data-cart-drawer]').isVisible() && await page.evaluate(() => window.__sszCartOpenTransitions === 1);
+    await page.evaluate(() => window.__sszCartOpenObserver?.disconnect());
+
+    const firstMiniItem = page.locator('.ssz-mini-cart-item').first();
+    const initialSubtotal = await page.locator('[data-mini-cart-subtotal]').innerText();
+    const requestsBeforePlus = cartMutationRequests;
+    await firstMiniItem.locator('[data-cart-action="increase"]').dblclick({ force: true });
+    await page.waitForTimeout(1200);
+    result.quantityPlus = await firstMiniItem.locator('[data-cart-quantity-input]').inputValue() === '2';
+    result.duplicateMutationGuard = cartMutationRequests - requestsBeforePlus === 1;
+    result.countRefresh = await page.locator('.ssz-cart-count').innerText() === '2';
+    result.subtotalRefresh = await page.locator('[data-mini-cart-subtotal]').innerText() !== initialSubtotal;
+    await page.locator('.ssz-mini-cart-continue[data-cart-close]').click();
+    await page.waitForTimeout(100);
+    result.continueShopping = await page.locator('[data-cart-drawer]').isHidden() && await page.locator('.ssz-cart-link').getAttribute('aria-expanded') === 'false' && await page.evaluate(() => document.activeElement?.matches('.ssz-cart-link') ?? false);
+    await page.locator('.ssz-cart-link').click();
+    await page.waitForTimeout(100);
+    await firstMiniItem.locator('[data-cart-action="decrease"]').click();
+    await page.waitForTimeout(1000);
+    result.quantityMinus = await firstMiniItem.locator('[data-cart-quantity-input]').inputValue() === '1';
+
+    await page.goto(new URL('product/store-007-test-variable-product-page/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.getByRole('button', { name: 'Colour: Navy', exact: true }).press('Enter');
+    await page.waitForTimeout(160);
+    await page.getByRole('button', { name: 'Size: M', exact: true }).press('Enter');
+    await page.waitForTimeout(650);
+    await page.getByRole('button', { name: 'Add to bag', exact: true }).click();
+    await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+    await page.waitForTimeout(900);
+    const variableItem = page.locator('.ssz-mini-cart-item').filter({ hasText: 'STORE-007 TEST Variable Product Page' }).first();
+    result.variableAdd = await variableItem.count() === 1 && await page.locator('.ssz-mini-cart-item').count() === 2;
+    const variableText = await variableItem.innerText();
+    result.variationLabels = /Navy/i.test(variableText) && /M/i.test(variableText) && !/attribute_pa_/i.test(variableText);
+
+    await page.goto(new URL('cart/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 }).catch(() => {});
+    await page.waitForTimeout(1600);
+    result.fullCart = await page.locator('main h1').count() === 1 && (await page.locator('main h1').innerText()).trim().toUpperCase() === 'CART' && await page.locator('.wc-block-cart-items__row').count() === 2 && await page.locator('.wc-block-cart__totals-title').innerText() === 'ORDER SUMMARY' && await page.locator('[data-cart-page-subtotal]').count() === 1 && await page.locator('.wc-block-cart__submit-button').count() === 1;
+    result.coupon = await page.getByRole('button', { name: 'Add coupons', exact: true }).count() === 1;
+    await page.getByRole('button', { name: /Remove STORE-007 TEST Variable Product Page from cart/ }).click();
+    await page.waitForTimeout(3000);
+    result.removeItem = await page.locator('.wc-block-cart-items__row').count() === 1 && await page.locator('.ssz-cart-count').innerText() === '1';
+
+    await page.goto(new URL('./', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(400);
+    await page.locator('.ssz-cart-link').click();
+    await page.locator('[data-cart-drawer]').waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+    await page.locator('.ssz-mini-cart-item').first().locator('[data-cart-action="remove"]').click();
+    await page.locator('.ssz-mini-cart-empty').waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(400);
+    result.emptyDrawer = await page.locator('[data-cart-drawer]').isVisible() && await page.locator('.ssz-mini-cart-empty').isVisible() && await page.locator('[data-cart-drawer]').innerText().then((text) => text.toUpperCase().includes('YOUR BAG IS EMPTY.') && text.toUpperCase().includes('START SHOPPING'));
+    result.oneOverlay = await page.locator('[data-cart-drawer]').isVisible() && await page.locator('[data-search-panel]').isHidden() && await page.locator('[data-mobile-nav]').isHidden();
+
+    await page.goto(new URL('cart/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 }).catch(() => {});
+    await page.waitForTimeout(1500);
+    result.emptyCart = await page.locator('[data-ssz-cart-empty-state]').isVisible() && await page.getByRole('heading', { name: 'Your cart is empty', exact: true }).count() === 1 && await page.getByRole('link', { name: 'Shop all', exact: true }).count() === 1 && await page.locator('.wp-block-product-new').evaluate((element) => getComputedStyle(element).display === 'none');
+    result.emptyCartSingleState = result.emptyCart && !await visible(page.locator('.wc-block-cart__empty-cart__title')) && !(await page.locator('body').innerText()).includes('Your cart is currently empty!');
+
+    await page.goto(new URL('./', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(300);
+    const cartLink = page.locator('.ssz-cart-link');
+    const drawer = page.locator('[data-cart-drawer]');
+    const searchToggle = page.locator('[data-search-toggle]');
+    const searchPanel = page.locator('[data-search-panel]');
+    const cartLockCleared = () => page.evaluate(() => !document.documentElement.classList.contains('ssz-cart-open') && !document.body.classList.contains('ssz-cart-open'));
+    const cartClosedState = async () => drawer.isHidden() && await cartLink.getAttribute('aria-expanded') === 'false' && await cartLockCleared();
+
+    await cartLink.click();
+    await page.waitForTimeout(100);
+    await searchToggle.dispatchEvent('click');
+    await page.waitForTimeout(100);
+    result.overlay.cartSearch = await cartClosedState() && await searchPanel.isVisible() && await searchToggle.getAttribute('aria-expanded') === 'true';
+    await cartLink.dispatchEvent('click');
+    await page.waitForTimeout(100);
+    result.overlay.searchCart = await drawer.isVisible() && await searchPanel.isHidden() && await searchToggle.getAttribute('aria-expanded') === 'false' && await page.evaluate(() => !document.body.classList.contains('ssz-search-active'));
+
+    await page.goto(new URL('shop/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(300);
+    const filterToggle = page.locator('[data-archive-filters-toggle]');
+    const filterPanel = page.locator('.ssz-filter-drawer__panel');
+    if (await filterToggle.count() && await filterToggle.isVisible()) {
+      await cartLink.click();
+      await page.waitForTimeout(100);
+      await filterToggle.dispatchEvent('click');
+      await page.waitForTimeout(100);
+      result.overlay.cartFilters = await cartClosedState() && await filterPanel.isVisible() && await filterToggle.getAttribute('aria-expanded') === 'true' && await page.evaluate(() => document.documentElement.classList.contains('ssz-filter-open'));
+      await cartLink.dispatchEvent('click');
+      await page.waitForTimeout(100);
+      result.overlay.filtersCart = await drawer.isVisible() && await filterPanel.isHidden() && await filterToggle.getAttribute('aria-expanded') === 'false' && await page.evaluate(() => !document.documentElement.classList.contains('ssz-filter-open') && !document.body.classList.contains('ssz-filter-open'));
+    }
+
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.goto(new URL('./', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(300);
+    const menuToggle = page.locator('[data-menu-toggle]');
+    const mobileNav = page.locator('[data-mobile-nav]');
+    if (await menuToggle.count() && await menuToggle.isVisible()) {
+      await cartLink.click();
+      await page.waitForTimeout(100);
+      await menuToggle.dispatchEvent('click');
+      await page.waitForTimeout(100);
+      result.overlay.cartMobileMenu = await cartClosedState() && await mobileNav.isVisible() && await menuToggle.getAttribute('aria-expanded') === 'true' && await page.evaluate(() => document.documentElement.classList.contains('ssz-menu-open'));
+      await cartLink.dispatchEvent('click');
+      await page.waitForTimeout(100);
+      result.overlay.mobileMenuCart = await drawer.isVisible() && await mobileNav.isHidden() && await menuToggle.getAttribute('aria-expanded') === 'false' && await page.evaluate(() => !document.documentElement.classList.contains('ssz-menu-open') && !document.body.classList.contains('ssz-menu-open'));
+    }
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(new URL('./', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(300);
+    const desktopToggles = page.locator('[data-primary-nav] > .ssz-primary-menu > .ssz-nav-item--has-children > [data-nav-toggle]');
+    result.overlay.desktopMegaConfigured = await desktopToggles.count() > 0;
+    if (result.overlay.desktopMegaConfigured) {
+      const desktopToggle = desktopToggles.first();
+      const desktopPanelId = await desktopToggle.getAttribute('aria-controls');
+      const desktopPanel = page.locator(`#${desktopPanelId}`);
+      await cartLink.click();
+      await page.waitForTimeout(100);
+      await desktopToggle.dispatchEvent('click');
+      await page.waitForTimeout(100);
+      result.overlay.cartDesktopMega = await cartClosedState() && await desktopPanel.isVisible() && await desktopToggle.getAttribute('aria-expanded') === 'true';
+      await cartLink.dispatchEvent('click');
+      await page.waitForTimeout(300);
+      result.overlay.desktopMegaCart = await drawer.isVisible() && await desktopPanel.isHidden() && await desktopToggle.getAttribute('aria-expanded') === 'false';
+    }
+  } catch (error) {
+    result.pageErrors.push(error.message);
+  } finally {
+    await page.close();
+    await context.close();
+  }
+
+  const noJsContext = await browser.newContext({ viewport: { width: 1280, height: 900 }, javaScriptEnabled: false });
+  const noJsPage = await noJsContext.newPage();
+  try {
+    await noJsPage.goto(new URL('product/store-005-test-simple-performance-suit/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+    await noJsPage.locator('form.cart button[name="add-to-cart"]').click();
+    await noJsPage.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+    await noJsPage.goto(new URL('cart/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+    result.noJs.headerCartLink = await noJsPage.locator('.ssz-cart-link').getAttribute('href').then((href) => Boolean(href?.includes('/cart/')));
+    result.noJs.cartPage = await noJsPage.locator('main h1').count() === 1 && await noJsPage.locator('[data-cart-drawer]').count() === 1;
+    result.noJs.checkoutPath = await noJsPage.locator('.wc-block-cart__submit-button, a[href*="/checkout/"]').count() > 0;
+    result.noJs.filledQuantityControl = await noJsPage.locator('.wc-block-components-quantity-selector__input, input.qty, [name="update_cart"]').count() > 0 ? 'PASS' : 'UNSUPPORTED';
+    result.noJs.filledRemoveControl = await noJsPage.locator('.wc-block-cart-item__remove-link, a.remove').count() > 0 ? 'PASS' : 'UNSUPPORTED';
+  } catch (error) {
+    result.pageErrors.push(error.message);
+  } finally {
+    await noJsPage.close();
+    await noJsContext.close();
+  }
+
+  return result;
+};
+
 const inspectRelatedSwatchInteraction = async (page) => {
   const cards = page.locator('.related.products ul.products li.ssz-product-card');
   const card = cards.filter({ has: page.locator('[data-ssz-colour-swatches]') }).first();
@@ -753,6 +1023,49 @@ let pdpFallback = {
   nativeSizeLabelVisible: false,
   customColourHidden: false,
   customSizeHidden: false,
+};
+let cartFunctional = {
+  headerBag: false,
+  autoOpen: false,
+  ajaxAddSingleOpen: false,
+  simpleAdd: false,
+  variableAdd: false,
+  variationLabels: false,
+  quantityPlus: false,
+  quantityMinus: false,
+  subtotalRefresh: false,
+  countRefresh: false,
+  duplicateMutationGuard: false,
+  fullCart: false,
+  coupon: false,
+  removeItem: false,
+  emptyDrawer: false,
+  emptyCart: false,
+  emptyCartSingleState: false,
+  checkout: false,
+  viewCart: false,
+  continueShopping: false,
+  noJs: {
+    headerCartLink: false,
+    cartPage: false,
+    checkoutPath: false,
+    filledQuantityControl: 'UNSUPPORTED',
+    filledRemoveControl: 'UNSUPPORTED',
+  },
+  oneOverlay: false,
+  overlay: {
+    cartSearch: false,
+    searchCart: false,
+    cartFilters: false,
+    filtersCart: false,
+    cartMobileMenu: false,
+    mobileMenuCart: false,
+    desktopMegaConfigured: false,
+    cartDesktopMega: false,
+    desktopMegaCart: false,
+  },
+  consoleErrors: [],
+  pageErrors: [],
 };
 
 try {
@@ -1100,6 +1413,8 @@ try {
       }
     }
 
+    const cart = await inspectCartSurface(page);
+
     await page.evaluate(() => window.scrollTo(0, 500));
     const stickyHeader = await page.evaluate(() => {
       const header = document.querySelector('[data-site-header]');
@@ -1161,6 +1476,7 @@ try {
         relatedSwatchInteraction,
       },
       search,
+      cart,
       menuState,
       desktop,
       stickyHeader,
@@ -1170,6 +1486,8 @@ try {
 
     await context.close();
   }
+
+  cartFunctional = await inspectCartFunctional(browser);
 
   const fallbackContext = await browser.newContext({ viewport: { width: 1280, height: 900 }, javaScriptEnabled: false });
   const fallbackPage = await fallbackContext.newPage();
@@ -1455,10 +1773,11 @@ if (process.env.SSZ_UAT_SUMMARY_ONLY === '1') {
       relatedSwatchInteraction: result.pdp.relatedSwatchInteraction,
       fallback: pdpFallback,
     },
+    cart: result.cart,
   })), null, 2));
-  console.log(JSON.stringify({ searchFunctional }, null, 2));
+  console.log(JSON.stringify({ searchFunctional, cartFunctional }, null, 2));
 } else {
-  console.log(JSON.stringify({ baseUrl, executablePath, requireLocalMenu, fallbackContract, pdpFallback, results, archiveFunctional, searchFunctional }, null, 2));
+  console.log(JSON.stringify({ baseUrl, executablePath, requireLocalMenu, fallbackContract, pdpFallback, results, archiveFunctional, searchFunctional, cartFunctional }, null, 2));
 }
 
 const failures = results.filter((result) => {
@@ -1516,6 +1835,7 @@ const failures = results.filter((result) => {
     !result.pdp.themeVisible || result.pdp.responseStatus === null || result.pdp.responseStatus >= 400 || result.pdp.navigationError || result.pdp.horizontalOverflow || result.pdp.consoleErrors.length || result.pdp.pageErrors.length ||
     !result.pdp.product.mainFound || result.pdp.product.mainHasCardClass || result.pdp.product.mainHasFitClass || !result.pdp.product.breadcrumb || !result.pdp.product.galleryFound || result.pdp.product.galleryImageCount < 1 || !result.pdp.product.galleryPrimaryImageLoaded || !result.pdp.product.galleryImagesHaveAlt || result.pdp.product.galleryLinks < 1 || (result.width >= 1121 && !result.pdp.product.galleryUsesGrid) || (result.width <= 767 && !result.pdp.product.galleryUsesScrollSnap) || result.pdp.product.galleryHasFlexViewport || result.pdp.product.galleryTransform !== 'none' || !result.pdp.product.summaryFound || !result.pdp.product.brand || result.pdp.product.brandColor !== 'rgb(35, 136, 173)' || result.pdp.product.titleCount !== 1 || !result.pdp.product.price || !result.pdp.product.addToBag || !result.pdp.product.nativeColour || !result.pdp.product.nativeSize || !result.pdp.product.colourControl || !result.pdp.product.sizeControl || !result.pdp.product.nativeColourRowEnhanced || !result.pdp.product.nativeSizeRowEnhanced || result.pdp.product.visibleColourLabelCount !== 1 || result.pdp.product.visibleSizeLabelCount !== 1 || !result.pdp.product.noDuplicateNativeColourLabel || !result.pdp.product.noDuplicateNativeSizeLabel || !result.pdp.product.customColourVisible || !result.pdp.product.customSizeVisible || !result.pdp.product.nativeColourVisuallyHidden || !result.pdp.product.nativeSizeVisuallyHidden || !result.pdp.product.nativeRowsNoMeaningfulBlankGeometry || !result.pdp.product.nativeResetPresent || !result.pdp.product.unsupportedNativeAttributesVisible || result.pdp.product.details.length !== 2 || result.pdp.product.details.includes('Material & care') || result.pdp.product.hasDefaultTabs || result.pdp.product.hasDefaultExcerpt || result.pdp.product.hasDefaultMeta || result.pdp.product.hasMaterialCare || !result.pdp.product.relatedFound || !result.pdp.product.relatedCardContract || !result.pdp.product.relatedRetailPresentation || !result.pdp.product.relatedSwatchContract || !result.pdp.interactions.initialRange || !result.pdp.interactions.initialDisabled || !result.pdp.interactions.colourSync || !result.pdp.interactions.colourName || !result.pdp.interactions.sizeSync || !result.pdp.interactions.asymmetricDisabled || !result.pdp.interactions.disabledCannotActivate || !result.pdp.interactions.variationFound || !result.pdp.interactions.variationPrice || !result.pdp.interactions.variationImage || !result.pdp.interactions.resetSync || !result.pdp.interactions.sizeGuide || !result.pdp.interactions.shippingReturns || !result.pdp.interactions.accordionsKeyboard || !result.pdp.relatedSwatchInteraction.configured || !result.pdp.relatedSwatchInteraction.semanticContract || (!result.pdp.relatedSwatchInteraction.selected && !result.pdp.relatedSwatchInteraction.availableOnlySafe) || !result.pdp.relatedSwatchInteraction.noNavigation || !result.pdp.relatedSwatchInteraction.noNestedInteractive ||
     !result.headerMode.colorLogoVisible || !result.headerMode.colorLogoLoaded || !result.headerMode.cartVisible ||
+    !result.cart.configured || !result.cart.href || !result.cart.ariaControlsTarget || !result.cart.opened || !result.cart.heading || !result.cart.empty || !result.cart.focusInside || !result.cart.bodyScrollLock || !result.cart.ariaExpanded || !result.cart.closedByEscape || !result.cart.focusRestored || !result.cart.noOverflow ||
     !result.search.opened || !result.search.inputFocused || !result.search.closed || !result.search.focusRestored ||
     mobileFailure || desktopFailure || missingConfiguredMenu ||
     !result.stickyHeader.aboveContent || !result.stickyHeader.announcementScrolledAway ||
@@ -1536,6 +1856,13 @@ if (!archiveFunctional.filterSubmit || !archiveFunctional.activeChips || !archiv
 
 if (!searchFunctional.form.opened || !searchFunctional.form.focused || !searchFunctional.form.placeholder || !searchFunctional.form.ariaLabel || !searchFunctional.matrix.title?.productCount || !searchFunctional.matrix.partial?.productCount || !searchFunctional.matrix.category?.productCount || !searchFunctional.matrix.brand?.productCount || !searchFunctional.matrix.colour?.productCount || !searchFunctional.matrix.title.productTitles.includes('STORE-005 TEST Variable Training Suit') || searchFunctional.matrix.sku?.productCount !== 0 || !searchFunctional.matrix.sku?.text.includes('Nothing found') || !searchFunctional.submit || !searchFunctional.noResults || !searchFunctional.productOnly || !searchFunctional.selectors.container || !searchFunctional.selectors.productItem || !searchFunctional.selectors.title || !searchFunctional.selectors.price || !searchFunctional.selectors.excerpt || !searchFunctional.predictiveImage.element || !searchFunctional.predictiveImage.loaded || !searchFunctional.predictiveImage.naturalWidth || !searchFunctional.predictiveImage.naturalHeight || !searchFunctional.archive.initial || !searchFunctional.archive.filter || !searchFunctional.archive.chip || !searchFunctional.archive.sorting || !searchFunctional.archive.clear || !searchFunctional.archive.pagination || searchFunctional.consoleErrors.length || searchFunctional.pageErrors.length) {
   console.error('Search functional UAT failed');
+  process.exitCode = 1;
+}
+
+const noJsSupported = cartFunctional.noJs.headerCartLink && cartFunctional.noJs.cartPage && cartFunctional.noJs.checkoutPath;
+const overlayFunctional = cartFunctional.overlay.cartSearch && cartFunctional.overlay.searchCart && cartFunctional.overlay.cartFilters && cartFunctional.overlay.filtersCart && cartFunctional.overlay.cartMobileMenu && cartFunctional.overlay.mobileMenuCart && (!cartFunctional.overlay.desktopMegaConfigured || (cartFunctional.overlay.cartDesktopMega && cartFunctional.overlay.desktopMegaCart));
+if (!cartFunctional.headerBag || !cartFunctional.autoOpen || !cartFunctional.ajaxAddSingleOpen || !cartFunctional.simpleAdd || !cartFunctional.variableAdd || !cartFunctional.variationLabels || !cartFunctional.quantityPlus || !cartFunctional.quantityMinus || !cartFunctional.duplicateMutationGuard || !cartFunctional.subtotalRefresh || !cartFunctional.countRefresh || !cartFunctional.fullCart || !cartFunctional.coupon || !cartFunctional.removeItem || !cartFunctional.emptyDrawer || !cartFunctional.emptyCart || !cartFunctional.emptyCartSingleState || !cartFunctional.checkout || !cartFunctional.viewCart || !cartFunctional.continueShopping || !noJsSupported || !overlayFunctional || !cartFunctional.oneOverlay || cartFunctional.consoleErrors.length || cartFunctional.pageErrors.length) {
+  console.error('Cart functional UAT failed');
   process.exitCode = 1;
 }
 

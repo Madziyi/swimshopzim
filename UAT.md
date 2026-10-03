@@ -123,7 +123,11 @@ For fresh-install fallback verification, use a disposable Local database or a te
 
 ## Cart
 
-- Cart page renders and the header count updates after adding an item.
+- STORE-009 keeps the live WooCommerce Cart Block on page ID 9; no shortcode replacement or alternate cart template is used. WooCommerce remains authoritative for cart rows, prices, quantity rules, coupon disclosure, checkout submission and Store API mutations.
+- The header bag remains a real `/cart/` link and progressively enhances to a right-side drawer. The drawer uses Woo fragments for item/count/subtotal refresh, Store API `update-item`/`remove-item` requests for quantity and removal, exact visible labels `YOUR BAG`, `CHECKOUT`, `VIEW CART` and `Continue shopping`, and server-rendered empty content with a real Shop link.
+- The drawer contract covers successful simple and variable PDP adds, readable variation labels, quantity plus/minus, remove, live count/subtotal, loading/error status, Escape/backdrop/close behavior, focus trapping/restoration, body scroll lock and search/filter/navigation overlay exclusivity. The full Cart Block uses the same visual hierarchy, a subtotal bridge, native coupon disclosure and a theme-owned empty-state sibling; the existing New in store rail is hidden on Cart pages.
+- Automated Playwright browser UAT passed the required widths `360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440, 1920` for the header bag/drawer surface, focus and scroll behavior, no horizontal overflow, zero console/page errors, plus functional simple/variable add, variation labels, quantity updates, subtotal/count synchronization, Cart Block rendering, coupon, remove, empty drawer and empty Cart state. The strengthened overlay pass covers cart → search → cart, cart → filters → cart, cart → mobile menu → cart and both directions for configured desktop mega menus, including hidden state, `aria-expanded` resets and scroll-lock cleanup.
+- The JavaScript-disabled facts are explicit: `noJs.headerCartLink=PASS`, `noJs.cartPage=PASS`, `noJs.checkoutPath=PASS`, `noJs.filledQuantityControl=UNSUPPORTED`, and `noJs.filledRemoveControl=UNSUPPORTED`. The filled quantity/remove limitation is the accepted WooCommerce Cart Block architecture decision from Sol; it is documented and is not a STORE-009 failure. The live block remains in place rather than being replaced with a shortcode, and the server-rendered branded empty state remains available without JavaScript.
 
 ## Checkout
 
