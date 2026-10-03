@@ -733,6 +733,19 @@ let archiveFunctional = {
   consoleErrors: [],
   pageErrors: [],
 };
+let searchFunctional = {
+  version: null,
+  form: { opened: false, focused: false, placeholder: false, ariaLabel: false },
+  matrix: {},
+  selectors: { container: false, productItem: false, title: false, image: false, price: false, excerpt: false },
+  predictiveImage: { element: false, loaded: false, naturalWidth: false, naturalHeight: false },
+  archive: { initial: false, filter: false, chip: false, sorting: false, clear: false, pagination: false },
+  submit: false,
+  noResults: false,
+  productOnly: false,
+  consoleErrors: [],
+  pageErrors: [],
+};
 let pdpFallback = {
   nativeColourVisible: false,
   nativeSizeVisible: false,
@@ -1165,6 +1178,152 @@ try {
   await fallbackPage.close();
   await fallbackContext.close();
 
+  try {
+    const searchContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const searchPage = await searchContext.newPage();
+    searchPage.on('console', (message) => {
+      if (message.type() === 'error') searchFunctional.consoleErrors.push(message.text());
+    });
+    searchPage.on('pageerror', (error) => searchFunctional.pageErrors.push(error.message));
+
+    await searchPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+    const searchToggle = searchPage.locator('[data-search-toggle]');
+    const searchPanel = searchPage.locator('[data-search-panel]');
+    const searchInput = searchPanel.locator('input[type="search"]');
+    await searchToggle.click();
+    searchFunctional.form.opened = await searchPanel.isVisible();
+    searchFunctional.form.focused = await searchPage.evaluate(() => document.activeElement?.matches('[data-search-panel] input[type="search"]') ?? false);
+    searchFunctional.form.placeholder = await searchInput.getAttribute('placeholder') === 'Search products…';
+    searchFunctional.form.ariaLabel = await searchInput.getAttribute('aria-label') === 'Search products';
+
+    const queries = [
+      ['title', 'Variable Training Suit'],
+      ['partial', 'train'],
+      ['category', 'goggles'],
+      ['brand', 'arena'],
+      ['colour', 'navy'],
+      ['size', 'medium'],
+      ['sizeDistinct', 'XL'],
+      ['sizeShort', 'm'],
+      ['typo', 'trainng'],
+      ['sku', 'SSZ-STORE008-SKU-001'],
+      ['excludedPage', 'Sample Page'],
+    ];
+
+    for (const [key, query] of queries) {
+      await searchInput.fill('');
+      await searchInput.fill(query);
+      await searchPage.waitForTimeout(1200);
+      searchFunctional.matrix[key] = await searchPage.evaluate(() => {
+        const box = document.querySelector('.is-ajax-search-result');
+        const productItems = [...document.querySelectorAll('.is-ajax-search-result .is-ajax-search-post.is-product')];
+        const productLinks = [...document.querySelectorAll('.is-ajax-search-result a[href*="/product/"]')].filter((link) => link.textContent?.trim());
+        return {
+          resultVisible: Boolean(box && getComputedStyle(box).display !== 'none'),
+          productCount: productItems.length,
+          productTitles: productLinks.map((link) => link.textContent.replace(/\s+/g, ' ').trim()),
+          text: box?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+        };
+      });
+
+      if (key === 'partial') {
+        searchFunctional.selectors = await searchPage.evaluate(() => {
+          const boxes = [...document.querySelectorAll('.is-ajax-search-result')];
+          const box = boxes.find((candidate) => candidate.querySelector('.is-ajax-search-post.is-product')) ?? boxes[0];
+          const item = box?.querySelector('.is-ajax-search-post.is-product');
+          const imageResult = [...(box?.querySelectorAll('.is-ajax-search-post.is-product') ?? [])].find((candidate) => candidate.querySelector('.thumbnail img'));
+          const image = imageResult?.querySelector('.thumbnail img');
+          return {
+            container: Boolean(box),
+            productItem: Boolean(item),
+            title: Boolean(item?.querySelector('.is-title a')),
+            image: Boolean(box?.querySelector('.is-ajax-search-post.is-product img')),
+            price: Boolean(item?.querySelector('.is-prices')),
+            excerpt: Boolean(item?.querySelector('.is-ajax-result-description')),
+            predictiveImage: {
+              element: Boolean(image),
+              loaded: Boolean(image?.complete),
+              naturalWidth: Boolean(image?.naturalWidth > 0),
+              naturalHeight: Boolean(image?.naturalHeight > 0),
+            },
+          };
+        });
+        searchFunctional.predictiveImage = searchFunctional.selectors.predictiveImage;
+      }
+    }
+
+    searchFunctional.noResults = searchFunctional.matrix.typo.text.includes('Nothing found') && searchFunctional.matrix.sku.text.includes('Nothing found');
+    searchFunctional.productOnly = searchFunctional.matrix.excludedPage.productCount === 0 && searchFunctional.matrix.excludedPage.text.includes('Nothing found');
+
+    const searchArchiveUrl = new URL('?s=train&post_type=product', baseUrl);
+    const searchArchivePage = await searchContext.newPage();
+    await searchArchivePage.goto(searchArchiveUrl.href, { waitUntil: 'networkidle', timeout: 30000 });
+    const initialSearchUrl = new URL(searchArchivePage.url());
+    const searchHeading = (await searchArchivePage.locator('.ssz-product-search h1').innerText()).toLowerCase();
+    searchFunctional.archive.initial = initialSearchUrl.searchParams.get('s') === 'train' && initialSearchUrl.searchParams.get('post_type') === 'product' && searchHeading.includes('train') && await searchArchivePage.locator('ul.products li.ssz-product-card--retail').count() > 0 && await searchArchivePage.locator('[data-archive-filters-toggle]').count() === 1 && await searchArchivePage.locator('.woocommerce-ordering select').count() === 1;
+
+    const filterPage = await searchContext.newPage();
+    await filterPage.goto(searchArchiveUrl.href, { waitUntil: 'networkidle', timeout: 30000 });
+    await filterPage.locator('[data-archive-filters-toggle]').click();
+    await filterPage.locator('input[data-archive-filter-checkbox="filter_product_brand"]').first().check();
+    await filterPage.locator('[data-archive-filter-form] button[type="submit"]').click({ force: true });
+    await filterPage.waitForLoadState('networkidle', { timeout: 30000 });
+    const filteredSearchUrl = new URL(filterPage.url());
+    searchFunctional.archive.filter = filteredSearchUrl.searchParams.get('s') === 'train' && filteredSearchUrl.searchParams.get('post_type') === 'product' && filteredSearchUrl.searchParams.has('filter_product_brand');
+
+    const chipPage = await searchContext.newPage();
+    await chipPage.goto(filteredSearchUrl.href, { waitUntil: 'networkidle', timeout: 30000 });
+    await chipPage.locator('a.ssz-active-filter').first().click({ force: true });
+    await chipPage.waitForLoadState('networkidle', { timeout: 30000 });
+    const chipSearchUrl = new URL(chipPage.url());
+    searchFunctional.archive.chip = chipSearchUrl.searchParams.get('s') === 'train' && chipSearchUrl.searchParams.get('post_type') === 'product' && !chipSearchUrl.searchParams.has('filter_product_brand');
+
+    const sortPage = await searchContext.newPage();
+    await sortPage.goto(searchArchiveUrl.href, { waitUntil: 'networkidle', timeout: 30000 });
+    await sortPage.locator('.woocommerce-ordering select').selectOption('price');
+    await sortPage.locator('form.woocommerce-ordering').evaluate((form) => form.submit());
+    await sortPage.waitForLoadState('networkidle', { timeout: 30000 });
+    const sortSearchUrl = new URL(sortPage.url());
+    searchFunctional.archive.sorting = sortSearchUrl.searchParams.get('s') === 'train' && sortSearchUrl.searchParams.get('post_type') === 'product' && sortSearchUrl.searchParams.get('orderby') === 'price';
+
+    const clearPage = await searchContext.newPage();
+    await clearPage.goto(`${searchArchiveUrl.href}&filter_product_brand=17`, { waitUntil: 'networkidle', timeout: 30000 });
+    await clearPage.locator('.ssz-active-filters__clear').click();
+    await clearPage.waitForLoadState('networkidle', { timeout: 30000 });
+    const clearSearchUrl = new URL(clearPage.url());
+    searchFunctional.archive.clear = clearSearchUrl.search === '?s=train&post_type=product';
+
+    const paginationLink = searchArchivePage.locator('.woocommerce-pagination a.page-numbers').filter({ hasText: '2' }).first();
+    if (await paginationLink.count()) {
+      await paginationLink.click();
+      await searchArchivePage.waitForLoadState('networkidle', { timeout: 30000 });
+      const paginationSearchUrl = new URL(searchArchivePage.url());
+      searchFunctional.archive.pagination = paginationSearchUrl.searchParams.get('s') === 'train' && paginationSearchUrl.searchParams.get('post_type') === 'product' && paginationSearchUrl.pathname.includes('/page/2/');
+    }
+
+    await searchArchivePage.close();
+    await filterPage.close();
+    await chipPage.close();
+    await sortPage.close();
+    await clearPage.close();
+
+    await searchPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+    await searchPage.locator('[data-search-toggle]').click();
+    const submitInput = searchPage.locator('[data-search-panel] input[type="search"]');
+    await submitInput.fill('train');
+    await searchPage.waitForTimeout(1200);
+    await submitInput.press('Enter');
+    await searchPage.waitForLoadState('networkidle', { timeout: 30000 });
+    const submitUrl = new URL(searchPage.url());
+    searchFunctional.submit = submitUrl.searchParams.get('s') === 'train' && submitUrl.searchParams.get('post_type') === 'product' && await searchPage.locator('.ssz-product-search h1').count() === 1;
+    searchFunctional.version = await searchPage.evaluate(() => Boolean([...document.querySelectorAll('script,link')].some((element) => element.src?.includes('/plugins/add-search-to-menu/') || element.href?.includes('/plugins/add-search-to-menu/'))));
+
+    await searchPage.close();
+    await searchContext.close();
+  } catch (error) {
+    searchFunctional.pageErrors.push(error.message);
+  }
+
 try {
   const functionalContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const functionalPage = await functionalContext.newPage();
@@ -1297,8 +1456,9 @@ if (process.env.SSZ_UAT_SUMMARY_ONLY === '1') {
       fallback: pdpFallback,
     },
   })), null, 2));
+  console.log(JSON.stringify({ searchFunctional }, null, 2));
 } else {
-  console.log(JSON.stringify({ baseUrl, executablePath, requireLocalMenu, fallbackContract, pdpFallback, results, archiveFunctional }, null, 2));
+  console.log(JSON.stringify({ baseUrl, executablePath, requireLocalMenu, fallbackContract, pdpFallback, results, archiveFunctional, searchFunctional }, null, 2));
 }
 
 const failures = results.filter((result) => {
@@ -1371,6 +1531,11 @@ if (failures.length) {
 
 if (!archiveFunctional.filterSubmit || !archiveFunctional.activeChips || !archiveFunctional.sorting || archiveFunctional.popularityFirst !== 'STORE-005 TEST Simple Performance Suit' || !archiveFunctional.categoryArchive || !archiveFunctional.brandArchive || !archiveFunctional.emptyState || (process.env.SSZ_REQUIRE_PAGINATION === '1' && !archiveFunctional.pagination) || archiveFunctional.consoleErrors.length || archiveFunctional.pageErrors.length) {
   console.error('Archive functional UAT failed');
+  process.exitCode = 1;
+}
+
+if (!searchFunctional.form.opened || !searchFunctional.form.focused || !searchFunctional.form.placeholder || !searchFunctional.form.ariaLabel || !searchFunctional.matrix.title?.productCount || !searchFunctional.matrix.partial?.productCount || !searchFunctional.matrix.category?.productCount || !searchFunctional.matrix.brand?.productCount || !searchFunctional.matrix.colour?.productCount || !searchFunctional.matrix.title.productTitles.includes('STORE-005 TEST Variable Training Suit') || searchFunctional.matrix.sku?.productCount !== 0 || !searchFunctional.matrix.sku?.text.includes('Nothing found') || !searchFunctional.submit || !searchFunctional.noResults || !searchFunctional.productOnly || !searchFunctional.selectors.container || !searchFunctional.selectors.productItem || !searchFunctional.selectors.title || !searchFunctional.selectors.price || !searchFunctional.selectors.excerpt || !searchFunctional.predictiveImage.element || !searchFunctional.predictiveImage.loaded || !searchFunctional.predictiveImage.naturalWidth || !searchFunctional.predictiveImage.naturalHeight || !searchFunctional.archive.initial || !searchFunctional.archive.filter || !searchFunctional.archive.chip || !searchFunctional.archive.sorting || !searchFunctional.archive.clear || !searchFunctional.archive.pagination || searchFunctional.consoleErrors.length || searchFunctional.pageErrors.length) {
+  console.error('Search functional UAT failed');
   process.exitCode = 1;
 }
 

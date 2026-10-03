@@ -104,6 +104,10 @@ The progressive-enhancement boundary is attribute-specific. Enhanced `pa_colour`
 
 Global PDP policy content is configured through the `SwimShop Product Page` Customizer section using sanitized page IDs: `Size Guide Page` renders a normal link only when configured, and `Shipping & Returns Page` renders an accordion only when configured.
 
+## STORE-008 search
+
+The header search keeps the existing SwimShop panel, navy/black type hierarchy, visible focus treatment and one-open-overlay contract. Ivory's live product results are appended outside the panel, so `search.css` scopes their presentation through the `ssz-search-active` body state and uses the actual product item contract: optional thumbnail, product title, price and short excerpt. Product suggestions use a compact image-led row on narrow screens and a two-column result layer at wider widths without horizontal overflow. Submitted searches reuse the STORE-006 archive and retail-card system; no separate search-card visual language is introduced. Empty search results use the same button/form primitives and expose a visible recovery path.
+
 ## Accessibility contract
 
 Visible `:focus-visible` treatment, readable base sizing, usable control heights, semantic HTML compatibility and reduced motion are preserved. The existing skip link is unchanged. Full accessibility auditing remains STORE-013 scope.
