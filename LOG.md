@@ -415,3 +415,17 @@ HANDOFF
 
 `STORE-009 REVIEW CORRECTION: Complete`. New correction commit and push will be recorded by Git history on `luna/STORE-009-cart-mini-cart`; previous reviewed commit: `f1591c57ba0d5e4d8fbb4227cc41bbb350b1b609`.
 
+## 2026-10-03 — STORE-009 Sol acceptance
+
+VERIFICATION
+Sol reviewed the complete STORE-009 branch through commit `96ed43ecfebf339ef77f917ddf51d575b1211a9c`. Review covered the retained WooCommerce Cart Block architecture, theme-owned mini-cart drawer, Store API quantity/remove mutations, Woo fragment synchronization, auto-open after successful Add to Bag, readable variation labels, header count synchronization, branded Cart presentation, coupon behavior, empty states, responsive layout and one-overlay interaction contract.
+
+VERIFICATION
+The final correction added the real `aria-controls` drawer target, stable delegated Continue shopping handling after fragment replacement, a single branded empty-cart state, duplicate mutation protection, a single namespaced Woo `added_to_cart` listener and bidirectional overlay UAT for search, filters, mobile navigation and configured desktop mega menus. The complete ten-width STORE-003–009 regression suite, PHP/JavaScript/JSON/diff/package checks and one-top-level-directory package verification passed.
+
+ARCHITECTURE DECISION
+The current WooCommerce Cart Block remains authoritative. Its filled-cart quantity/remove controls are JavaScript-hydrated and are unavailable with JavaScript disabled. Sol accepted this limitation rather than replacing the current Cart Block with the classic `[woocommerce_cart]` shortcode solely for that edge case. Real Cart navigation and the checkout path remain available in the supported fallback.
+
+DECISION
+STORE-009 is accepted. Pull request #8 was merged to `main` at merge commit `524e007bc95bd526e6764904912339472a526577`. STORE-010 — Checkout styling becomes the next planned initiative.
+
