@@ -6,6 +6,7 @@ import { chromium } from 'playwright';
 
 const baseUrl = process.env.SSZ_LOCAL_URL ?? 'http://swimshop-zimbabwe.local/';
 const widths = [360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440, 1920];
+const accountAuditWidths = [...new Set([...widths, 899, 900, 901, 1119])].sort((left, right) => left - right);
 const store012StressWidths = [320, 375, 414, 480, 600, 766, 767, 768, 781, 782, 783, 899, 900, 901, 1023, 1024, 1025, 1119, 1120, 1121, 1366, 1536];
 const configuredStore012Widths = process.env.SSZ_STORE012_WIDTHS?.split(',').map((value) => Number.parseInt(value.trim(), 10)).filter((value) => Number.isFinite(value)) ?? null;
 const store012SweepWidths = configuredStore012Widths?.length ? [...new Set(configuredStore012Widths)] : [...new Set([...widths, ...store012StressWidths])];
@@ -663,6 +664,11 @@ const inspectResponsiveGeometry = async (page, surface, width, height) => page.e
   const accountShell = document.querySelector('.woocommerce-account.logged-in .ssz-entry__content > .woocommerce');
   const accountNavigation = document.querySelector('.woocommerce-MyAccount-navigation');
   const accountContent = document.querySelector('.woocommerce-MyAccount-content');
+  const accountNavigationStyle = style(accountNavigation);
+  const accountContentStyle = style(accountContent);
+  const accountNavigationRect = rect(accountNavigation);
+  const accountContentRect = rect(accountContent);
+  const accountLinks = [...document.querySelectorAll('.woocommerce-MyAccount-navigation a')];
   return {
     surface: surfaceName,
     viewport: { width: viewportWidth, height: viewportHeight },
@@ -742,15 +748,47 @@ const inspectResponsiveGeometry = async (page, surface, width, height) => page.e
     },
     account: {
       authenticatedShell: Boolean(accountShell),
-      navigation: rect(accountNavigation),
-      content: rect(accountContent),
+      layout: accountShell ? (style(accountShell)?.display === 'grid' ? 'grid' : 'stacked') : null,
+      navigation: accountNavigationRect,
+      content: accountContentRect,
+      navigationBeforeContent: Boolean(accountNavigationRect && accountContentRect && accountNavigationRect.bottom <= accountContentRect.top + 2),
+      navigationUsable: accountLinks.length > 0 && accountLinks.every((link) => {
+        const linkRect = link.getBoundingClientRect();
+        return linkRect.width > 0 && linkRect.height > 0 && linkRect.right <= (document.documentElement.clientWidth + 2);
+      }),
+      navigationDisplay: accountNavigationStyle?.display ?? null,
+      contentDisplay: accountContentStyle?.display ?? null,
+      contentWithinViewport: Boolean(accountContentRect && accountContentRect.width > 0 && accountContentRect.right <= document.documentElement.clientWidth + 2),
+      downloadsHidden: document.querySelectorAll('.woocommerce-MyAccount-navigation-link--downloads, .woocommerce-MyAccount-navigation a[href*="/downloads/"]').length === 0,
+      signOutVisible: Boolean(document.querySelector('.woocommerce-MyAccount-navigation-link--customer-logout a')),
+      horizontalOverflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) > document.documentElement.clientWidth + 2,
       loggedOutColumns: columns('.woocommerce-account:not(.logged-in) .woocommerce .u-columns'),
     },
   };
 }, { surfaceName: surface, viewportWidth: width, viewportHeight: height });
 
-const runStore012ResponsiveSweep = async (browser) => {
+const runStore012ResponsiveSweep = async (browser, storageState = null) => {
   const records = [];
+  let responsiveStorageState = storageState;
+  if (storageState) {
+    const authContext = await browser.newContext(contextOptions({ viewport: { width: 1280, height: 900 } }));
+    const authPage = await authContext.newPage();
+    try {
+      await authPage.goto(new URL('my-account/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+      if (await authPage.locator('form.login #username').count()) {
+        await authPage.locator('form.login #username').fill(process.env.SSZ_ACCOUNT_USER);
+        await authPage.locator('form.login #password').fill(process.env.SSZ_ACCOUNT_PASSWORD);
+        await authPage.locator('form.login button[type="submit"]').click();
+        await authPage.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+      }
+      const authenticated = await authPage.evaluate(() => document.body.classList.contains('logged-in'));
+      if (!authenticated) throw new Error('Authenticated responsive sweep session could not be established.');
+      responsiveStorageState = await authContext.storageState();
+    } finally {
+      await authPage.close();
+      await authContext.close();
+    }
+  }
   const screenshotWidths = new Set(widths);
   const surfaces = [
     { name: 'HOME', path: './' },
@@ -768,7 +806,9 @@ const runStore012ResponsiveSweep = async (browser) => {
 
   for (const viewport of viewports) {
     const { width, height, short } = viewport;
-    const context = await browser.newContext(contextOptions({ viewport: { width, height } }));
+    const options = { viewport: { width, height } };
+    if (responsiveStorageState) options.storageState = responsiveStorageState;
+    const context = await browser.newContext(contextOptions(options));
     for (const surface of surfaces) {
       const page = await context.newPage();
       let navigationError = null;
@@ -834,6 +874,8 @@ const inspectStore012Seams = (records) => {
   const pdp1121 = get('PDP', 1121);
   const header1120 = get('HOME', 1120);
   const header1121 = get('HOME', 1121);
+  const account1120 = get('MY ACCOUNT', 1120);
+  const account1121 = get('MY ACCOUNT', 1121);
   const archive1024 = get('SHOP', 1024);
   const archive1025 = get('SHOP', 1025);
   const pdp1024Short = getViewport('PDP', 1024, 700);
@@ -860,6 +902,16 @@ const inspectStore012Seams = (records) => {
       pdp1121?.layoutModes?.pdpGallery?.display === 'grid' && pdp1121?.layoutModes?.pdpGallery?.gridTemplateColumns?.split(/\s+/).length === 2 &&
       noOverflow('PDP', 1120) && noOverflow('PDP', 1121),
       { at1120: pdp1120?.layoutModes?.pdpGallery, at1121: pdp1121?.layoutModes?.pdpGallery }),
+    seam('1120 / 1121 authenticated account layout',
+      account1120?.account?.authenticatedShell === true && account1120?.account?.layout === 'stacked' &&
+      account1120?.account?.navigationBeforeContent === true && account1120?.account?.navigationUsable === true &&
+      account1120?.account?.contentWithinViewport === true && account1120?.account?.downloadsHidden === true &&
+      account1120?.account?.signOutVisible === true && account1120?.account?.horizontalOverflow === false &&
+      account1121?.account?.authenticatedShell === true && account1121?.account?.layout === 'grid' &&
+      account1121?.account?.navigation?.width >= 230 && account1121?.account?.navigation?.width <= 280 &&
+      account1121?.account?.contentWithinViewport === true && account1121?.account?.downloadsHidden === true &&
+      account1121?.account?.signOutVisible === true && account1121?.account?.horizontalOverflow === false,
+      { at1120: account1120?.account, at1121: account1121?.account }),
     seam('1024 / 1025 archive exception',
       archive1024?.layoutModes?.archiveProducts?.columns === 3 && archive1025?.layoutModes?.archiveProducts?.columns === 4 &&
       noOverflow('SHOP', 1024) && noOverflow('SHOP', 1025),
@@ -1298,6 +1350,11 @@ const inspectAccountUat = async (browser) => {
     mobileNavigation: false,
     mobileOrders: false,
     desktopLayout: false,
+    responsiveLayout: false,
+    layoutSeam: { at1120: false, at1121: false, pass: false },
+    dashboardResponsive: false,
+    ordersResponsive: false,
+    accountDetailsResponsive: false,
     allWidths: false,
     widthChecks: [],
     consoleErrors: [],
@@ -1373,6 +1430,7 @@ const inspectAccountUat = async (browser) => {
     result.downloadsHidden = loginState.downloads === 0;
     result.signOutLabel = loginState.logoutText === 'Sign out' && /customer-logout/.test(loginState.logoutHref) && /_wpnonce=/.test(loginState.logoutHref);
     storageState = await context.storageState();
+    authenticatedAccountStorageState = storageState;
 
     result.dashboard = await page.evaluate(() => {
       const content = document.querySelector('.woocommerce-MyAccount-content')?.innerText ?? '';
@@ -1419,7 +1477,8 @@ const inspectAccountUat = async (browser) => {
       /No saved methods found/i.test(paymentText) && !/Visa|Mastercard|PayPal|EcoCash|Paynow/i.test(paymentText);
 
     const widthChecks = [];
-    for (const width of widths) {
+    const screenshotWidths = new Set([390, 768, 1024, 1120, 1121, 1280]);
+    for (const width of accountAuditWidths) {
       const widthContext = await browser.newContext(contextOptions({ viewport: { width, height: width < 768 ? 800 : 900 }, storageState }));
       const widthPage = await widthContext.newPage();
       await widthPage.goto(accountUrl(), { waitUntil: 'networkidle', timeout: 30000 });
@@ -1430,6 +1489,16 @@ const inspectAccountUat = async (browser) => {
         const shell = document.querySelector('.ssz-entry__content > .woocommerce');
         const navRect = nav?.getBoundingClientRect();
         const contentRect = content?.getBoundingClientRect();
+        const navStyle = nav ? getComputedStyle(nav) : null;
+        const shellStyle = shell ? getComputedStyle(shell) : null;
+        const contentStyle = content ? getComputedStyle(content) : null;
+        const links = [...document.querySelectorAll('.woocommerce-MyAccount-navigation a')];
+        const navUsable = links.length > 0 && links.every((link) => {
+          const linkRect = link.getBoundingClientRect();
+          return linkRect.width > 0 && linkRect.height > 0 && linkRect.right <= root.clientWidth + 2;
+        });
+        const stacked = targetWidth <= 1120 && shellStyle?.display !== 'grid' && Boolean(navRect && contentRect && navRect.bottom <= contentRect.top + 2);
+        const desktop = targetWidth >= 1121 && shellStyle?.display === 'grid' && Boolean(navRect && navRect.width >= 230 && navRect.width <= 280 && contentRect?.width);
         return {
           width: targetWidth,
           h1: [...document.querySelectorAll('main h1')].map((node) => node.textContent.trim()),
@@ -1437,25 +1506,83 @@ const inspectAccountUat = async (browser) => {
           downloads: document.querySelectorAll('.woocommerce-MyAccount-navigation-link--downloads, .woocommerce-MyAccount-navigation a[href*="/downloads/"]').length,
           overflow: root.scrollWidth > root.clientWidth + 2,
           navBeforeContent: Boolean(navRect && contentRect && navRect.top < contentRect.top),
+          navUsable,
+          navWidth: navRect?.width ?? 0,
+          contentWidth: contentRect?.width ?? 0,
+          contentWithinViewport: Boolean(contentRect && contentRect.width > 0 && contentRect.right <= root.clientWidth + 2),
+          navDisplay: navStyle?.display ?? null,
+          contentDisplay: contentStyle?.display ?? null,
+          shellDisplay: shellStyle?.display ?? null,
+          stacked,
           mobileStack: targetWidth <= 767 && getComputedStyle(document.querySelector('.woocommerce-MyAccount-navigation ul')).display === 'block',
-          desktopGrid: targetWidth >= 1121 && getComputedStyle(shell).display === 'grid' && navRect?.width >= 230 && navRect?.width <= 280 && Boolean(contentRect?.width),
+          desktopGrid: desktop,
         };
       }, width);
       await widthPage.goto(accountUrl('orders/'), { waitUntil: 'networkidle', timeout: 30000 });
       const orderCheck = await widthPage.evaluate((targetWidth) => ({
         orderRows: document.querySelectorAll('.woocommerce-orders-table tbody tr').length,
         orderOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
+        orderTableWidth: document.querySelector('.woocommerce-orders-table')?.getBoundingClientRect().width ?? 0,
+        orderActionsReadable: [...document.querySelectorAll('.woocommerce-orders-table__cell-order-actions a')].every((link) => {
+          const rect = link.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0 && rect.right <= document.documentElement.clientWidth + 2;
+        }),
         mobileOrder: targetWidth <= 430 && getComputedStyle(document.querySelector('.woocommerce-orders-table tbody tr th')).display === 'block' && getComputedStyle(document.querySelector('.woocommerce-orders-table tbody tr td')).display === 'flex',
       }), width);
-      widthChecks.push({ ...accountCheck, ...orderCheck });
+      const responsivePage = new Set([1024, 1120, 1121, 1280]).has(width) ? widthPage : null;
+      let dashboardCheck = null;
+      let detailsCheck = null;
+      if (responsivePage) {
+        await responsivePage.goto(accountUrl(), { waitUntil: 'networkidle', timeout: 30000 });
+        dashboardCheck = await responsivePage.evaluate(() => ({
+          heading: document.querySelector('.ssz-account-content__heading')?.textContent.trim().toUpperCase() ?? '',
+          overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
+        }));
+        await responsivePage.goto(accountUrl('edit-account/'), { waitUntil: 'networkidle', timeout: 30000 });
+        detailsCheck = await responsivePage.evaluate(() => {
+          const root = document.documentElement;
+          const fields = ['#account_first_name', '#account_last_name', '#account_display_name', '#account_email'].map((selector) => document.querySelector(selector));
+          const fieldRects = fields.map((field) => field?.getBoundingClientRect() ?? null);
+          const passwordFieldset = document.querySelector('fieldset');
+          const passwordRect = passwordFieldset?.getBoundingClientRect() ?? null;
+          return {
+            fieldsReadable: fieldRects.every((rect) => rect && rect.width >= 120 && rect.height > 0 && rect.right <= root.clientWidth + 2),
+            passwordReadable: Boolean(passwordRect && passwordRect.width >= 120 && passwordRect.right <= root.clientWidth + 2),
+            overflow: root.scrollWidth > root.clientWidth + 2,
+          };
+        });
+      }
+      widthChecks.push({ ...accountCheck, ...orderCheck, dashboardCheck, detailsCheck });
+      if (process.env.SSZ_ACCOUNT_SCREENSHOTS === '1' && screenshotWidths.has(width)) {
+        await widthPage.goto(accountUrl(), { waitUntil: 'networkidle', timeout: 30000 });
+        await widthPage.screenshot({ path: path.join(outputDir, `store012-account-auth-${width}.png`), fullPage: true });
+      }
       await widthPage.close();
       await widthContext.close();
     }
     result.widthChecks = widthChecks;
-    result.allWidths = widthChecks.length === widths.length && widthChecks.every((check) => check.h1.length === 1 && check.h1[0].toUpperCase() === 'MY ACCOUNT' && check.navLinks === expectedMenu.length && check.downloads === 0 && !check.overflow && check.orderRows === 1 && !check.orderOverflow);
+    result.allWidths = widthChecks.length === accountAuditWidths.length && widthChecks.every((check) => check.h1.length === 1 && check.h1[0].toUpperCase() === 'MY ACCOUNT' && check.navLinks === expectedMenu.length && check.downloads === 0 && !check.overflow && check.orderRows === 1 && !check.orderOverflow && check.navUsable && check.contentWithinViewport && check.orderActionsReadable);
     result.mobileNavigation = widthChecks.some((check) => check.width === 390 && check.mobileStack && check.navBeforeContent);
     result.mobileOrders = widthChecks.some((check) => check.width === 390 && check.mobileOrder && !check.orderOverflow);
     result.desktopLayout = widthChecks.some((check) => check.width === 1280 && check.desktopGrid);
+    result.responsiveLayout = widthChecks.every((check) => (check.width <= 1120 ? check.stacked : check.desktopGrid));
+    result.layoutSeam = {
+      at1120: Boolean(widthChecks.find((check) => check.width === 1120)?.stacked),
+      at1121: Boolean(widthChecks.find((check) => check.width === 1121)?.desktopGrid),
+      pass: Boolean(widthChecks.find((check) => check.width === 1120)?.stacked && widthChecks.find((check) => check.width === 1121)?.desktopGrid),
+    };
+    result.dashboardResponsive = [1024, 1120, 1121, 1280].every((width) => {
+      const check = widthChecks.find((entry) => entry.width === width);
+      return check?.dashboardCheck?.heading === 'DASHBOARD' && check.dashboardCheck.overflow === false;
+    });
+    result.ordersResponsive = [1024, 1120, 1121, 1280].every((width) => {
+      const check = widthChecks.find((entry) => entry.width === width);
+      return check?.orderRows === 1 && check.orderOverflow === false && check.orderActionsReadable === true && check.orderTableWidth > 0;
+    });
+    result.accountDetailsResponsive = [1024, 1120, 1121, 1280].every((width) => {
+      const check = widthChecks.find((entry) => entry.width === width);
+      return check?.detailsCheck?.fieldsReadable === true && check.detailsCheck.passwordReadable === true && check.detailsCheck.overflow === false;
+    });
 
     const noJsContext = await browser.newContext(contextOptions({ viewport: { width: 1280, height: 900 }, javaScriptEnabled: false, storageState }));
     const noJsPage = await noJsContext.newPage();
@@ -1580,6 +1707,7 @@ let cartFunctional = {
 let accountFunctional = null;
 let store012Responsive = [];
 let store012ResponsiveSeams = [];
+let authenticatedAccountStorageState = null;
 
 try {
   if (process.env.SSZ_RESPONSIVE_ONLY !== '1') {
@@ -2217,7 +2345,7 @@ accountFunctional = await inspectAccountUat(browser);
   }
 
 if (process.env.SSZ_STORE012_RESPONSIVE === '1') {
-  store012Responsive = await runStore012ResponsiveSweep(browser);
+  store012Responsive = await runStore012ResponsiveSweep(browser, authenticatedAccountStorageState);
   store012ResponsiveSeams = inspectStore012Seams(store012Responsive);
 }
 
@@ -2417,7 +2545,9 @@ if (process.env.SSZ_RESPONSIVE_ONLY !== '1' && accountFunctional?.enabled && (
   !accountFunctional.ordersPopulated || !accountFunctional.ordersEmpty || !accountFunctional.viewOrder || !accountFunctional.variableOrderItem ||
   !accountFunctional.addresses || !accountFunctional.editAddress || !accountFunctional.accountDetails || !accountFunctional.passwordFields ||
   !accountFunctional.paymentMethods || !accountFunctional.noJs || !accountFunctional.mobileNavigation || !accountFunctional.mobileOrders ||
-  !accountFunctional.desktopLayout || !accountFunctional.allWidths || accountFunctional.consoleErrors.length || accountFunctional.pageErrors.length
+  !accountFunctional.desktopLayout || !accountFunctional.responsiveLayout || !accountFunctional.layoutSeam.pass ||
+  !accountFunctional.dashboardResponsive || !accountFunctional.ordersResponsive || !accountFunctional.accountDetailsResponsive ||
+  !accountFunctional.allWidths || accountFunctional.consoleErrors.length || accountFunctional.pageErrors.length
 )) {
   console.error('Account functional UAT failed');
   process.exitCode = 1;
