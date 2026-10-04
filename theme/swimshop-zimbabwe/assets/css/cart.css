@@ -299,6 +299,11 @@ html.ssz-cart-open body { overflow: hidden; }
   .woocommerce-cart .wc-block-cart__sidebar { padding: var(--ssz-space-md); }
 }
 
+/* Keep the full Cart summary reachable on shorter tablet/desktop viewports. */
+@media (min-width: 768px) and (max-height: 720px) {
+  .woocommerce-cart .wc-block-components-sidebar { position: static; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ssz-mini-cart__panel { transition: none; }
 }

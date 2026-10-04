@@ -6,6 +6,22 @@ import { chromium } from 'playwright';
 
 const baseUrl = process.env.SSZ_LOCAL_URL ?? 'http://swimshop-zimbabwe.local/';
 const widths = [360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440, 1920];
+const accountAuditWidths = [...new Set([...widths, 899, 900, 901, 1119])].sort((left, right) => left - right);
+const store012StressWidths = [320, 375, 414, 480, 600, 766, 767, 768, 781, 782, 783, 899, 900, 901, 1023, 1024, 1025, 1119, 1120, 1121, 1366, 1536];
+const configuredStore012Widths = process.env.SSZ_STORE012_WIDTHS?.split(',').map((value) => Number.parseInt(value.trim(), 10)).filter((value) => Number.isFinite(value)) ?? null;
+const store012SweepWidths = configuredStore012Widths?.length ? [...new Set(configuredStore012Widths)] : [...new Set([...widths, ...store012StressWidths])];
+const store012ShortViewports = [
+  { width: 360, height: 667 },
+  { width: 390, height: 667 },
+  { width: 390, height: 844 },
+  { width: 430, height: 932 },
+  { width: 768, height: 600 },
+  { width: 768, height: 1024 },
+  { width: 1024, height: 700 },
+  { width: 1024, height: 768 },
+  { width: 1280, height: 720 },
+  { width: 1440, height: 900 },
+];
 const outputDir = path.resolve('artifacts/uat');
 const requireLocalMenu = process.env.SSZ_REQUIRE_LOCAL_MENU === '1';
 const localHost = process.env.SSZ_LOCAL_HOST;
@@ -611,6 +627,315 @@ const inspectCartSurface = async (page) => {
   return state;
 };
 
+const inspectResponsiveGeometry = async (page, surface, width, height) => page.evaluate(({ surfaceName, viewportWidth, viewportHeight }) => {
+  const rect = (element) => {
+    if (!element) return null;
+    const box = element.getBoundingClientRect();
+    return {
+      left: Number(box.left.toFixed(1)),
+      right: Number(box.right.toFixed(1)),
+      top: Number(box.top.toFixed(1)),
+      bottom: Number(box.bottom.toFixed(1)),
+      width: Number(box.width.toFixed(1)),
+      height: Number(box.height.toFixed(1)),
+    };
+  };
+  const style = (element) => element ? getComputedStyle(element) : null;
+  const columns = (selector) => {
+    const element = document.querySelector(selector);
+    const value = style(element)?.gridTemplateColumns;
+    if (!value || value === 'none') return null;
+    return value.split(/\s+/).filter(Boolean).length;
+  };
+  const elementWidth = (selector) => rect(document.querySelector(selector))?.width ?? null;
+  const root = document.documentElement;
+  const body = document.body;
+  const header = document.querySelector('[data-site-header]');
+  const primary = document.querySelector('main .ssz-container, main.ssz-container, [data-homepage-categories], .ssz-commerce-main');
+  const mobileNav = document.querySelector('[data-mobile-nav]');
+  const searchPanel = document.querySelector('[data-search-panel]');
+  const drawer = document.querySelector('[data-cart-drawer]');
+  const filterPanel = document.querySelector('.ssz-filter-drawer__panel');
+  const summary = document.querySelector('.ssz-product-page div.product div.summary');
+  const cartSidebar = document.querySelector('.woocommerce-cart .wc-block-components-sidebar');
+  const miniCartContent = drawer?.querySelector('[data-mini-cart-content]');
+  const miniCartActions = drawer?.querySelector('.ssz-mini-cart-actions');
+  const miniCartItems = drawer?.querySelectorAll('.ssz-mini-cart-item');
+  const accountShell = document.querySelector('.woocommerce-account.logged-in .ssz-entry__content > .woocommerce');
+  const accountNavigation = document.querySelector('.woocommerce-MyAccount-navigation');
+  const accountContent = document.querySelector('.woocommerce-MyAccount-content');
+  const accountNavigationStyle = style(accountNavigation);
+  const accountContentStyle = style(accountContent);
+  const accountNavigationRect = rect(accountNavigation);
+  const accountContentRect = rect(accountContent);
+  const accountLinks = [...document.querySelectorAll('.woocommerce-MyAccount-navigation a')];
+  return {
+    surface: surfaceName,
+    viewport: { width: viewportWidth, height: viewportHeight },
+    document: {
+      clientWidth: root?.clientWidth ?? 0,
+      scrollWidth: Math.max(root?.scrollWidth ?? 0, body?.scrollWidth ?? 0),
+      horizontalOverflow: Math.max(root?.scrollWidth ?? 0, body?.scrollWidth ?? 0) > (root?.clientWidth ?? 0) + 2,
+    },
+    primaryContainer: rect(primary),
+    header: {
+      rect: rect(header),
+      mode: document.querySelector('[data-primary-nav]') && style(document.querySelector('[data-primary-nav]'))?.display !== 'none' ? 'desktop' : 'mobile',
+      mobileDrawerWidth: rect(mobileNav?.querySelector('.ssz-mobile-drawer'))?.width ?? null,
+      stickyPosition: style(header)?.position ?? null,
+    },
+    layoutModes: {
+      homeProducts: (() => {
+        const element = document.querySelector('[data-homepage-product-section] ul.products');
+        const computed = style(element);
+        return element ? { display: computed?.display ?? null, overflowX: computed?.overflowX ?? null, columns: columns('[data-homepage-product-section] ul.products') } : null;
+      })(),
+      archiveProducts: (() => {
+        const element = document.querySelector('.ssz-product-archive ul.products');
+        const computed = style(element);
+        return element ? { display: computed?.display ?? null, overflowX: computed?.overflowX ?? null, columns: columns('.ssz-product-archive ul.products') } : null;
+      })(),
+      pdpGallery: (() => {
+        const element = document.querySelector('.ssz-product-page .woocommerce-product-gallery__wrapper');
+        const computed = style(element);
+        return element ? { display: computed?.display ?? null, gridTemplateColumns: computed?.gridTemplateColumns ?? null, overflowX: computed?.overflowX ?? null, scrollSnapType: computed?.scrollSnapType ?? null } : null;
+      })(),
+    },
+    grids: {
+      homeCategories: columns('[data-homepage-categories] .ssz-category-grid'),
+      homeProducts: columns('[data-homepage-product-section] ul.products'),
+      archiveProducts: columns('.ssz-product-archive ul.products'),
+      activity: columns('[data-homepage-activities] .ssz-activity-grid'),
+      account: columns('.woocommerce-account.logged-in .ssz-entry__content > .woocommerce'),
+    },
+    widths: {
+      headerInner: elementWidth('[data-site-header] .ssz-header__inner'),
+      searchPanel: elementWidth('[data-search-panel]'),
+      filterPanel: elementWidth('.ssz-filter-drawer__panel'),
+      pdpGallery: elementWidth('.ssz-product-page .woocommerce-product-gallery'),
+      pdpSummary: elementWidth('.ssz-product-page div.product div.summary'),
+      cartLayout: elementWidth('.woocommerce-cart .wc-block-components-sidebar-layout'),
+      cartSidebar: elementWidth('.woocommerce-cart .wc-block-components-sidebar'),
+      accountNavigation: elementWidth('.woocommerce-account .woocommerce-MyAccount-navigation'),
+      accountContent: elementWidth('.woocommerce-account .woocommerce-MyAccount-content'),
+    },
+    sticky: {
+      pdpSummary: summary ? { position: style(summary)?.position ?? null, top: Number(summary.getBoundingClientRect().top.toFixed(1)) } : null,
+      cartSidebar: cartSidebar ? { position: style(cartSidebar)?.position ?? null, top: Number(cartSidebar.getBoundingClientRect().top.toFixed(1)) } : null,
+    },
+    miniCart: miniCartContent ? (() => {
+      const initialScrollTop = miniCartContent.scrollTop;
+      const initialActions = rect(miniCartActions);
+      miniCartContent.scrollTop = Math.max(0, miniCartContent.scrollHeight - miniCartContent.clientHeight);
+      const actionsAtBottom = rect(miniCartActions);
+      miniCartContent.scrollTop = initialScrollTop;
+      return {
+        visible: Boolean(drawer && style(drawer)?.display !== 'none' && !drawer.hidden),
+        itemCount: miniCartItems?.length ?? 0,
+        content: {
+          clientHeight: miniCartContent.clientHeight,
+          scrollHeight: miniCartContent.scrollHeight,
+          overflowY: style(miniCartContent)?.overflowY ?? null,
+        },
+        actions: initialActions,
+        actionsAtBottom,
+      };
+    })() : null,
+    overlays: {
+      searchVisible: Boolean(searchPanel && style(searchPanel)?.display !== 'none' && !searchPanel.hidden),
+      cartVisible: Boolean(drawer && style(drawer)?.display !== 'none' && !drawer.hidden),
+      filterVisible: Boolean(filterPanel && style(filterPanel)?.display !== 'none' && !filterPanel.hidden),
+    },
+    account: {
+      authenticatedShell: Boolean(accountShell),
+      layout: accountShell ? (style(accountShell)?.display === 'grid' ? 'grid' : 'stacked') : null,
+      navigation: accountNavigationRect,
+      content: accountContentRect,
+      navigationBeforeContent: Boolean(accountNavigationRect && accountContentRect && accountNavigationRect.bottom <= accountContentRect.top + 2),
+      navigationUsable: accountLinks.length > 0 && accountLinks.every((link) => {
+        const linkRect = link.getBoundingClientRect();
+        return linkRect.width > 0 && linkRect.height > 0 && linkRect.right <= (document.documentElement.clientWidth + 2);
+      }),
+      navigationDisplay: accountNavigationStyle?.display ?? null,
+      contentDisplay: accountContentStyle?.display ?? null,
+      contentWithinViewport: Boolean(accountContentRect && accountContentRect.width > 0 && accountContentRect.right <= document.documentElement.clientWidth + 2),
+      downloadsHidden: document.querySelectorAll('.woocommerce-MyAccount-navigation-link--downloads, .woocommerce-MyAccount-navigation a[href*="/downloads/"]').length === 0,
+      signOutVisible: Boolean(document.querySelector('.woocommerce-MyAccount-navigation-link--customer-logout a')),
+      horizontalOverflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) > document.documentElement.clientWidth + 2,
+      loggedOutColumns: columns('.woocommerce-account:not(.logged-in) .woocommerce .u-columns'),
+    },
+  };
+}, { surfaceName: surface, viewportWidth: width, viewportHeight: height });
+
+const runStore012ResponsiveSweep = async (browser, storageState = null) => {
+  const records = [];
+  let responsiveStorageState = storageState;
+  if (storageState) {
+    const authContext = await browser.newContext(contextOptions({ viewport: { width: 1280, height: 900 } }));
+    const authPage = await authContext.newPage();
+    try {
+      await authPage.goto(new URL('my-account/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+      if (await authPage.locator('form.login #username').count()) {
+        await authPage.locator('form.login #username').fill(process.env.SSZ_ACCOUNT_USER);
+        await authPage.locator('form.login #password').fill(process.env.SSZ_ACCOUNT_PASSWORD);
+        await authPage.locator('form.login button[type="submit"]').click();
+        await authPage.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+      }
+      const authenticated = await authPage.evaluate(() => document.body.classList.contains('logged-in'));
+      if (!authenticated) throw new Error('Authenticated responsive sweep session could not be established.');
+      responsiveStorageState = await authContext.storageState();
+    } finally {
+      await authPage.close();
+      await authContext.close();
+    }
+  }
+  const screenshotWidths = new Set(widths);
+  const surfaces = [
+    { name: 'HOME', path: './' },
+    { name: 'SHOP', path: 'shop/' },
+    { name: 'PDP', path: 'product/store-007-test-variable-product-page/' },
+    { name: 'SEARCH', path: '?s=train&post_type=product' },
+    { name: 'CART', path: 'cart/' },
+    { name: 'MY ACCOUNT', path: 'my-account/' },
+  ];
+
+  const viewports = [
+    ...store012SweepWidths.map((width) => ({ width, height: width < 768 ? 800 : 900, short: false })),
+    ...store012ShortViewports.map((viewport) => ({ ...viewport, short: true })),
+  ];
+
+  for (const viewport of viewports) {
+    const { width, height, short } = viewport;
+    const options = { viewport: { width, height } };
+    if (responsiveStorageState) options.storageState = responsiveStorageState;
+    const context = await browser.newContext(contextOptions(options));
+    for (const surface of surfaces) {
+      const page = await context.newPage();
+      let navigationError = null;
+      try {
+        if (surface.name === 'CART' && short) {
+          await page.goto(new URL('product/store-005-test-simple-performance-suit/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+          await page.getByRole('button', { name: 'Add to bag', exact: true }).click();
+          await page.waitForTimeout(500);
+          await page.goto(new URL('product/store-007-test-variable-product-page/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+          await page.getByRole('button', { name: 'Colour: Navy', exact: true }).press('Enter');
+          await page.waitForTimeout(160);
+          await page.getByRole('button', { name: 'Size: M', exact: true }).press('Enter');
+          await page.waitForTimeout(650);
+          await page.getByRole('button', { name: 'Add to bag', exact: true }).click();
+          await page.waitForTimeout(900);
+        }
+        await page.goto(new URL(surface.path, baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+        if (surface.name === 'SEARCH') {
+          const searchToggle = page.locator('[data-search-toggle]');
+          if (await searchToggle.count()) {
+            await searchToggle.click();
+            await page.waitForTimeout(80);
+          }
+        }
+        if (surface.name === 'CART' && width === 360 && height === 667) {
+          const cartToggle = page.locator('.ssz-cart-link');
+          if (await cartToggle.count()) {
+            await cartToggle.click();
+            await page.waitForTimeout(120);
+          }
+        }
+        const geometry = await inspectResponsiveGeometry(page, surface.name, width, height);
+        records.push({ ...geometry, navigationError });
+        if (process.env.SSZ_STORE012_SCREENSHOTS === '1' && !short && screenshotWidths.has(width)) {
+          await page.screenshot({ path: path.join(outputDir, `store012-${surface.name.toLowerCase().replaceAll(' ', '-')}-${width}.png`), fullPage: true });
+        }
+        if (process.env.SSZ_STORE012_SCREENSHOTS === '1' && surface.name === 'CART' && width === 360 && height === 667) {
+          await page.screenshot({ path: path.join(outputDir, 'store012-mini-cart-360x667.png'), fullPage: true });
+        }
+      } catch (error) {
+        navigationError = error.message;
+        records.push({ surface: surface.name, viewport: { width, height }, navigationError });
+      } finally {
+        await page.close();
+      }
+    }
+    await context.close();
+  }
+
+  return records;
+};
+
+const inspectStore012Seams = (records) => {
+  const get = (surface, width) => records.find((record) => record.surface === surface && record.viewport?.width === width);
+  const getViewport = (surface, width, height) => records.find((record) => record.surface === surface && record.viewport?.width === width && record.viewport?.height === height);
+  const noOverflow = (surface, width) => get(surface, width)?.document?.horizontalOverflow === false;
+  const seam = (name, pass, evidence) => ({ name, pass: Boolean(pass), evidence });
+  const home767 = get('HOME', 767);
+  const home768 = get('HOME', 768);
+  const pdp767 = get('PDP', 767);
+  const pdp768 = get('PDP', 768);
+  const pdp1120 = get('PDP', 1120);
+  const pdp1121 = get('PDP', 1121);
+  const header1120 = get('HOME', 1120);
+  const header1121 = get('HOME', 1121);
+  const account1120 = get('MY ACCOUNT', 1120);
+  const account1121 = get('MY ACCOUNT', 1121);
+  const archive1024 = get('SHOP', 1024);
+  const archive1025 = get('SHOP', 1025);
+  const pdp1024Short = getViewport('PDP', 1024, 700);
+  const cart1024Short = getViewport('CART', 1024, 700);
+  const cart1280Short = getViewport('CART', 1280, 720);
+  const miniCart360Short = getViewport('CART', 360, 667);
+
+  return [
+    seam('767 / 768 homepage mode',
+      home767?.header?.mode === 'mobile' && home768?.header?.mode === 'mobile' &&
+      home767?.layoutModes?.homeProducts?.display === 'flex' && home768?.layoutModes?.homeProducts?.display === 'grid' &&
+      home768?.layoutModes?.homeProducts?.columns === 4 && noOverflow('HOME', 767) && noOverflow('HOME', 768),
+      { mobileRail: home767?.layoutModes?.homeProducts, tabletGrid: home768?.layoutModes?.homeProducts }),
+    seam('767 / 768 PDP mode',
+      pdp767?.layoutModes?.pdpGallery?.display === 'flex' && pdp767?.layoutModes?.pdpGallery?.scrollSnapType?.startsWith('x') &&
+      pdp768?.layoutModes?.pdpGallery?.display === 'grid' && pdp768?.layoutModes?.pdpGallery?.gridTemplateColumns &&
+      pdp767?.sticky?.pdpSummary?.position === 'static' && noOverflow('PDP', 767) && noOverflow('PDP', 768),
+      { mobile: pdp767?.layoutModes?.pdpGallery, tablet: pdp768?.layoutModes?.pdpGallery, mobileSummary: pdp767?.sticky?.pdpSummary }),
+    seam('1120 / 1121 header mode',
+      header1120?.header?.mode === 'mobile' && header1121?.header?.mode === 'desktop' && noOverflow('HOME', 1120) && noOverflow('HOME', 1121),
+      { at1120: header1120?.header?.mode, at1121: header1121?.header?.mode }),
+    seam('1120 / 1121 PDP gallery mode',
+      pdp1120?.layoutModes?.pdpGallery?.display === 'grid' && pdp1120?.layoutModes?.pdpGallery?.gridTemplateColumns?.split(/\s+/).length === 1 &&
+      pdp1121?.layoutModes?.pdpGallery?.display === 'grid' && pdp1121?.layoutModes?.pdpGallery?.gridTemplateColumns?.split(/\s+/).length === 2 &&
+      noOverflow('PDP', 1120) && noOverflow('PDP', 1121),
+      { at1120: pdp1120?.layoutModes?.pdpGallery, at1121: pdp1121?.layoutModes?.pdpGallery }),
+    seam('1120 / 1121 authenticated account layout',
+      account1120?.account?.authenticatedShell === true && account1120?.account?.layout === 'stacked' &&
+      account1120?.account?.navigationBeforeContent === true && account1120?.account?.navigationUsable === true &&
+      account1120?.account?.contentWithinViewport === true && account1120?.account?.downloadsHidden === true &&
+      account1120?.account?.signOutVisible === true && account1120?.account?.horizontalOverflow === false &&
+      account1121?.account?.authenticatedShell === true && account1121?.account?.layout === 'grid' &&
+      account1121?.account?.navigation?.width >= 230 && account1121?.account?.navigation?.width <= 280 &&
+      account1121?.account?.contentWithinViewport === true && account1121?.account?.downloadsHidden === true &&
+      account1121?.account?.signOutVisible === true && account1121?.account?.horizontalOverflow === false,
+      { at1120: account1120?.account, at1121: account1121?.account }),
+    seam('1024 / 1025 archive exception',
+      archive1024?.layoutModes?.archiveProducts?.columns === 3 && archive1025?.layoutModes?.archiveProducts?.columns === 4 &&
+      noOverflow('SHOP', 1024) && noOverflow('SHOP', 1025),
+      { at1024: archive1024?.layoutModes?.archiveProducts, at1025: archive1025?.layoutModes?.archiveProducts }),
+    seam('short-height purchase and cart reachability',
+      pdp1024Short?.sticky?.pdpSummary?.position === 'static' &&
+      cart1024Short?.sticky?.cartSidebar?.position === 'static' &&
+      cart1280Short?.sticky?.cartSidebar?.position === 'static' &&
+      pdp1024Short?.document?.horizontalOverflow === false &&
+      cart1024Short?.document?.horizontalOverflow === false &&
+      cart1280Short?.document?.horizontalOverflow === false &&
+      miniCart360Short?.miniCart?.visible === true &&
+      miniCart360Short?.miniCart?.itemCount === 2 &&
+      ['auto', 'scroll'].includes(miniCart360Short?.miniCart?.content?.overflowY) &&
+      miniCart360Short?.miniCart?.actionsAtBottom?.bottom <= 667,
+      {
+        pdp1024x700: pdp1024Short?.sticky?.pdpSummary,
+        cart1024x700: cart1024Short?.sticky?.cartSidebar,
+        cart1280x720: cart1280Short?.sticky?.cartSidebar,
+        miniCart360x667: miniCart360Short?.miniCart,
+      }),
+  ];
+};
+
 const inspectCartFunctional = async (browser) => {
   const result = {
     headerBag: false,
@@ -1025,6 +1350,11 @@ const inspectAccountUat = async (browser) => {
     mobileNavigation: false,
     mobileOrders: false,
     desktopLayout: false,
+    responsiveLayout: false,
+    layoutSeam: { at1120: false, at1121: false, pass: false },
+    dashboardResponsive: false,
+    ordersResponsive: false,
+    accountDetailsResponsive: false,
     allWidths: false,
     widthChecks: [],
     consoleErrors: [],
@@ -1100,6 +1430,7 @@ const inspectAccountUat = async (browser) => {
     result.downloadsHidden = loginState.downloads === 0;
     result.signOutLabel = loginState.logoutText === 'Sign out' && /customer-logout/.test(loginState.logoutHref) && /_wpnonce=/.test(loginState.logoutHref);
     storageState = await context.storageState();
+    authenticatedAccountStorageState = storageState;
 
     result.dashboard = await page.evaluate(() => {
       const content = document.querySelector('.woocommerce-MyAccount-content')?.innerText ?? '';
@@ -1146,7 +1477,8 @@ const inspectAccountUat = async (browser) => {
       /No saved methods found/i.test(paymentText) && !/Visa|Mastercard|PayPal|EcoCash|Paynow/i.test(paymentText);
 
     const widthChecks = [];
-    for (const width of widths) {
+    const screenshotWidths = new Set([390, 768, 1024, 1120, 1121, 1280]);
+    for (const width of accountAuditWidths) {
       const widthContext = await browser.newContext(contextOptions({ viewport: { width, height: width < 768 ? 800 : 900 }, storageState }));
       const widthPage = await widthContext.newPage();
       await widthPage.goto(accountUrl(), { waitUntil: 'networkidle', timeout: 30000 });
@@ -1157,6 +1489,16 @@ const inspectAccountUat = async (browser) => {
         const shell = document.querySelector('.ssz-entry__content > .woocommerce');
         const navRect = nav?.getBoundingClientRect();
         const contentRect = content?.getBoundingClientRect();
+        const navStyle = nav ? getComputedStyle(nav) : null;
+        const shellStyle = shell ? getComputedStyle(shell) : null;
+        const contentStyle = content ? getComputedStyle(content) : null;
+        const links = [...document.querySelectorAll('.woocommerce-MyAccount-navigation a')];
+        const navUsable = links.length > 0 && links.every((link) => {
+          const linkRect = link.getBoundingClientRect();
+          return linkRect.width > 0 && linkRect.height > 0 && linkRect.right <= root.clientWidth + 2;
+        });
+        const stacked = targetWidth <= 1120 && shellStyle?.display !== 'grid' && Boolean(navRect && contentRect && navRect.bottom <= contentRect.top + 2);
+        const desktop = targetWidth >= 1121 && shellStyle?.display === 'grid' && Boolean(navRect && navRect.width >= 230 && navRect.width <= 280 && contentRect?.width);
         return {
           width: targetWidth,
           h1: [...document.querySelectorAll('main h1')].map((node) => node.textContent.trim()),
@@ -1164,25 +1506,83 @@ const inspectAccountUat = async (browser) => {
           downloads: document.querySelectorAll('.woocommerce-MyAccount-navigation-link--downloads, .woocommerce-MyAccount-navigation a[href*="/downloads/"]').length,
           overflow: root.scrollWidth > root.clientWidth + 2,
           navBeforeContent: Boolean(navRect && contentRect && navRect.top < contentRect.top),
+          navUsable,
+          navWidth: navRect?.width ?? 0,
+          contentWidth: contentRect?.width ?? 0,
+          contentWithinViewport: Boolean(contentRect && contentRect.width > 0 && contentRect.right <= root.clientWidth + 2),
+          navDisplay: navStyle?.display ?? null,
+          contentDisplay: contentStyle?.display ?? null,
+          shellDisplay: shellStyle?.display ?? null,
+          stacked,
           mobileStack: targetWidth <= 767 && getComputedStyle(document.querySelector('.woocommerce-MyAccount-navigation ul')).display === 'block',
-          desktopGrid: targetWidth >= 1121 && getComputedStyle(shell).display === 'grid' && navRect?.width >= 230 && navRect?.width <= 280 && Boolean(contentRect?.width),
+          desktopGrid: desktop,
         };
       }, width);
       await widthPage.goto(accountUrl('orders/'), { waitUntil: 'networkidle', timeout: 30000 });
       const orderCheck = await widthPage.evaluate((targetWidth) => ({
         orderRows: document.querySelectorAll('.woocommerce-orders-table tbody tr').length,
         orderOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
+        orderTableWidth: document.querySelector('.woocommerce-orders-table')?.getBoundingClientRect().width ?? 0,
+        orderActionsReadable: [...document.querySelectorAll('.woocommerce-orders-table__cell-order-actions a')].every((link) => {
+          const rect = link.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0 && rect.right <= document.documentElement.clientWidth + 2;
+        }),
         mobileOrder: targetWidth <= 430 && getComputedStyle(document.querySelector('.woocommerce-orders-table tbody tr th')).display === 'block' && getComputedStyle(document.querySelector('.woocommerce-orders-table tbody tr td')).display === 'flex',
       }), width);
-      widthChecks.push({ ...accountCheck, ...orderCheck });
+      const responsivePage = new Set([1024, 1120, 1121, 1280]).has(width) ? widthPage : null;
+      let dashboardCheck = null;
+      let detailsCheck = null;
+      if (responsivePage) {
+        await responsivePage.goto(accountUrl(), { waitUntil: 'networkidle', timeout: 30000 });
+        dashboardCheck = await responsivePage.evaluate(() => ({
+          heading: document.querySelector('.ssz-account-content__heading')?.textContent.trim().toUpperCase() ?? '',
+          overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
+        }));
+        await responsivePage.goto(accountUrl('edit-account/'), { waitUntil: 'networkidle', timeout: 30000 });
+        detailsCheck = await responsivePage.evaluate(() => {
+          const root = document.documentElement;
+          const fields = ['#account_first_name', '#account_last_name', '#account_display_name', '#account_email'].map((selector) => document.querySelector(selector));
+          const fieldRects = fields.map((field) => field?.getBoundingClientRect() ?? null);
+          const passwordFieldset = document.querySelector('fieldset');
+          const passwordRect = passwordFieldset?.getBoundingClientRect() ?? null;
+          return {
+            fieldsReadable: fieldRects.every((rect) => rect && rect.width >= 120 && rect.height > 0 && rect.right <= root.clientWidth + 2),
+            passwordReadable: Boolean(passwordRect && passwordRect.width >= 120 && passwordRect.right <= root.clientWidth + 2),
+            overflow: root.scrollWidth > root.clientWidth + 2,
+          };
+        });
+      }
+      widthChecks.push({ ...accountCheck, ...orderCheck, dashboardCheck, detailsCheck });
+      if (process.env.SSZ_ACCOUNT_SCREENSHOTS === '1' && screenshotWidths.has(width)) {
+        await widthPage.goto(accountUrl(), { waitUntil: 'networkidle', timeout: 30000 });
+        await widthPage.screenshot({ path: path.join(outputDir, `store012-account-auth-${width}.png`), fullPage: true });
+      }
       await widthPage.close();
       await widthContext.close();
     }
     result.widthChecks = widthChecks;
-    result.allWidths = widthChecks.length === widths.length && widthChecks.every((check) => check.h1.length === 1 && check.h1[0].toUpperCase() === 'MY ACCOUNT' && check.navLinks === expectedMenu.length && check.downloads === 0 && !check.overflow && check.orderRows === 1 && !check.orderOverflow);
+    result.allWidths = widthChecks.length === accountAuditWidths.length && widthChecks.every((check) => check.h1.length === 1 && check.h1[0].toUpperCase() === 'MY ACCOUNT' && check.navLinks === expectedMenu.length && check.downloads === 0 && !check.overflow && check.orderRows === 1 && !check.orderOverflow && check.navUsable && check.contentWithinViewport && check.orderActionsReadable);
     result.mobileNavigation = widthChecks.some((check) => check.width === 390 && check.mobileStack && check.navBeforeContent);
     result.mobileOrders = widthChecks.some((check) => check.width === 390 && check.mobileOrder && !check.orderOverflow);
     result.desktopLayout = widthChecks.some((check) => check.width === 1280 && check.desktopGrid);
+    result.responsiveLayout = widthChecks.every((check) => (check.width <= 1120 ? check.stacked : check.desktopGrid));
+    result.layoutSeam = {
+      at1120: Boolean(widthChecks.find((check) => check.width === 1120)?.stacked),
+      at1121: Boolean(widthChecks.find((check) => check.width === 1121)?.desktopGrid),
+      pass: Boolean(widthChecks.find((check) => check.width === 1120)?.stacked && widthChecks.find((check) => check.width === 1121)?.desktopGrid),
+    };
+    result.dashboardResponsive = [1024, 1120, 1121, 1280].every((width) => {
+      const check = widthChecks.find((entry) => entry.width === width);
+      return check?.dashboardCheck?.heading === 'DASHBOARD' && check.dashboardCheck.overflow === false;
+    });
+    result.ordersResponsive = [1024, 1120, 1121, 1280].every((width) => {
+      const check = widthChecks.find((entry) => entry.width === width);
+      return check?.orderRows === 1 && check.orderOverflow === false && check.orderActionsReadable === true && check.orderTableWidth > 0;
+    });
+    result.accountDetailsResponsive = [1024, 1120, 1121, 1280].every((width) => {
+      const check = widthChecks.find((entry) => entry.width === width);
+      return check?.detailsCheck?.fieldsReadable === true && check.detailsCheck.passwordReadable === true && check.detailsCheck.overflow === false;
+    });
 
     const noJsContext = await browser.newContext(contextOptions({ viewport: { width: 1280, height: 900 }, javaScriptEnabled: false, storageState }));
     const noJsPage = await noJsContext.newPage();
@@ -1305,8 +1705,12 @@ let cartFunctional = {
   pageErrors: [],
 };
 let accountFunctional = null;
+let store012Responsive = [];
+let store012ResponsiveSeams = [];
+let authenticatedAccountStorageState = null;
 
 try {
+  if (process.env.SSZ_RESPONSIVE_ONLY !== '1') {
   for (const width of widths) {
     const height = width < 768 ? 800 : 900;
     const context = await browser.newContext(contextOptions({ viewport: { width, height } }));
@@ -1938,12 +2342,36 @@ try {
 }
 
 accountFunctional = await inspectAccountUat(browser);
+  }
+
+if (process.env.SSZ_STORE012_RESPONSIVE === '1') {
+  store012Responsive = await runStore012ResponsiveSweep(browser, authenticatedAccountStorageState);
+  store012ResponsiveSeams = inspectStore012Seams(store012Responsive);
+}
 
 } finally {
   await browser.close();
 }
 
-if (process.env.SSZ_UAT_SUMMARY_ONLY === '1') {
+const responsiveOutput = store012Responsive.map((record) => ({
+    surface: record.surface,
+    viewport: record.viewport,
+    navigationError: record.navigationError ?? null,
+    document: record.document,
+    primaryContainer: record.primaryContainer,
+    header: record.header,
+    grids: record.grids,
+    widths: record.widths,
+    sticky: record.sticky,
+    miniCart: record.miniCart,
+    overlays: record.overlays,
+    account: record.account,
+    layoutModes: record.layoutModes,
+}));
+
+if (process.env.SSZ_RESPONSIVE_ONLY === '1') {
+  console.log(JSON.stringify({ store012Responsive: responsiveOutput, store012ResponsiveSeams }, null, 2));
+} else if (process.env.SSZ_UAT_SUMMARY_ONLY === '1') {
   console.log(JSON.stringify(results.map((result) => ({
     width: result.width,
     headerMode: result.headerMode,
@@ -2015,9 +2443,9 @@ if (process.env.SSZ_UAT_SUMMARY_ONLY === '1') {
     },
     cart: result.cart,
   })), null, 2));
-  console.log(JSON.stringify({ searchFunctional, cartFunctional, accountFunctional }, null, 2));
+  console.log(JSON.stringify({ searchFunctional, cartFunctional, accountFunctional, store012Responsive: responsiveOutput, store012ResponsiveSeams }, null, 2));
 } else {
-  console.log(JSON.stringify({ baseUrl, executablePath, requireLocalMenu, localHost, fallbackContract, pdpFallback, results, archiveFunctional, searchFunctional, cartFunctional, accountFunctional }, null, 2));
+  console.log(JSON.stringify({ baseUrl, executablePath, requireLocalMenu, localHost, fallbackContract, pdpFallback, results, archiveFunctional, searchFunctional, cartFunctional, accountFunctional, store012Responsive, store012ResponsiveSeams }, null, 2));
 }
 
 const failures = results.filter((result) => {
@@ -2089,36 +2517,48 @@ if (failures.length) {
   process.exitCode = 1;
 }
 
-if (!archiveFunctional.filterSubmit || !archiveFunctional.activeChips || !archiveFunctional.sorting || archiveFunctional.popularityFirst !== 'STORE-005 TEST Simple Performance Suit' || !archiveFunctional.categoryArchive || !archiveFunctional.brandArchive || !archiveFunctional.emptyState || (process.env.SSZ_REQUIRE_PAGINATION === '1' && !archiveFunctional.pagination) || archiveFunctional.consoleErrors.length || archiveFunctional.pageErrors.length) {
+if (process.env.SSZ_RESPONSIVE_ONLY !== '1' && (!archiveFunctional.filterSubmit || !archiveFunctional.activeChips || !archiveFunctional.sorting || archiveFunctional.popularityFirst !== 'STORE-005 TEST Simple Performance Suit' || !archiveFunctional.categoryArchive || !archiveFunctional.brandArchive || !archiveFunctional.emptyState || (process.env.SSZ_REQUIRE_PAGINATION === '1' && !archiveFunctional.pagination) || archiveFunctional.consoleErrors.length || archiveFunctional.pageErrors.length)) {
   console.error('Archive functional UAT failed');
   process.exitCode = 1;
 }
 
-if (!searchFunctional.form.opened || !searchFunctional.form.focused || !searchFunctional.form.placeholder || !searchFunctional.form.ariaLabel || !searchFunctional.matrix.title?.productCount || !searchFunctional.matrix.partial?.productCount || !searchFunctional.matrix.category?.productCount || !searchFunctional.matrix.brand?.productCount || !searchFunctional.matrix.colour?.productCount || !searchFunctional.matrix.title.productTitles.includes('STORE-005 TEST Variable Training Suit') || searchFunctional.matrix.sku?.productCount !== 0 || !searchFunctional.matrix.sku?.text.includes('Nothing found') || !searchFunctional.submit || !searchFunctional.noResults || !searchFunctional.productOnly || !searchFunctional.selectors.container || !searchFunctional.selectors.productItem || !searchFunctional.selectors.title || !searchFunctional.selectors.price || !searchFunctional.selectors.excerpt || !searchFunctional.predictiveImage.element || !searchFunctional.predictiveImage.loaded || !searchFunctional.predictiveImage.naturalWidth || !searchFunctional.predictiveImage.naturalHeight || !searchFunctional.archive.initial || !searchFunctional.archive.filter || !searchFunctional.archive.chip || !searchFunctional.archive.sorting || !searchFunctional.archive.clear || !searchFunctional.archive.pagination || searchFunctional.consoleErrors.length || searchFunctional.pageErrors.length) {
+if (process.env.SSZ_RESPONSIVE_ONLY !== '1' && (!searchFunctional.form.opened || !searchFunctional.form.focused || !searchFunctional.form.placeholder || !searchFunctional.form.ariaLabel || !searchFunctional.matrix.title?.productCount || !searchFunctional.matrix.partial?.productCount || !searchFunctional.matrix.category?.productCount || !searchFunctional.matrix.brand?.productCount || !searchFunctional.matrix.colour?.productCount || !searchFunctional.matrix.title.productTitles.includes('STORE-005 TEST Variable Training Suit') || searchFunctional.matrix.sku?.productCount !== 0 || !searchFunctional.matrix.sku?.text.includes('Nothing found') || !searchFunctional.submit || !searchFunctional.noResults || !searchFunctional.productOnly || !searchFunctional.selectors.container || !searchFunctional.selectors.productItem || !searchFunctional.selectors.title || !searchFunctional.selectors.price || !searchFunctional.selectors.excerpt || !searchFunctional.predictiveImage.element || !searchFunctional.predictiveImage.loaded || !searchFunctional.predictiveImage.naturalWidth || !searchFunctional.predictiveImage.naturalHeight || !searchFunctional.archive.initial || !searchFunctional.archive.filter || !searchFunctional.archive.chip || !searchFunctional.archive.sorting || !searchFunctional.archive.clear || !searchFunctional.archive.pagination || searchFunctional.consoleErrors.length || searchFunctional.pageErrors.length)) {
   console.error('Search functional UAT failed');
   process.exitCode = 1;
 }
 
 const noJsSupported = cartFunctional.noJs.headerCartLink && cartFunctional.noJs.cartPage && cartFunctional.noJs.checkoutPath;
 const overlayFunctional = cartFunctional.overlay.cartSearch && cartFunctional.overlay.searchCart && cartFunctional.overlay.cartFilters && cartFunctional.overlay.filtersCart && cartFunctional.overlay.cartMobileMenu && cartFunctional.overlay.mobileMenuCart && (!cartFunctional.overlay.desktopMegaConfigured || (cartFunctional.overlay.cartDesktopMega && cartFunctional.overlay.desktopMegaCart));
-if (!cartFunctional.headerBag || !cartFunctional.autoOpen || !cartFunctional.ajaxAddSingleOpen || !cartFunctional.simpleAdd || !cartFunctional.variableAdd || !cartFunctional.variationLabels || !cartFunctional.quantityPlus || !cartFunctional.quantityMinus || !cartFunctional.duplicateMutationGuard || !cartFunctional.subtotalRefresh || !cartFunctional.countRefresh || !cartFunctional.fullCart || !cartFunctional.coupon || !cartFunctional.removeItem || !cartFunctional.emptyDrawer || !cartFunctional.emptyCart || !cartFunctional.emptyCartSingleState || !cartFunctional.checkout || !cartFunctional.viewCart || !cartFunctional.continueShopping || !noJsSupported || !overlayFunctional || !cartFunctional.oneOverlay || cartFunctional.consoleErrors.length || cartFunctional.pageErrors.length) {
+if (process.env.SSZ_RESPONSIVE_ONLY !== '1' && (!cartFunctional.headerBag || !cartFunctional.autoOpen || !cartFunctional.ajaxAddSingleOpen || !cartFunctional.simpleAdd || !cartFunctional.variableAdd || !cartFunctional.variationLabels || !cartFunctional.quantityPlus || !cartFunctional.quantityMinus || !cartFunctional.duplicateMutationGuard || !cartFunctional.subtotalRefresh || !cartFunctional.countRefresh || !cartFunctional.fullCart || !cartFunctional.coupon || !cartFunctional.removeItem || !cartFunctional.emptyDrawer || !cartFunctional.emptyCart || !cartFunctional.emptyCartSingleState || !cartFunctional.checkout || !cartFunctional.viewCart || !cartFunctional.continueShopping || !noJsSupported || !overlayFunctional || !cartFunctional.oneOverlay || cartFunctional.consoleErrors.length || cartFunctional.pageErrors.length)) {
   console.error('Cart functional UAT failed');
   process.exitCode = 1;
 }
 
-if (!pdpFallback.nativeColourVisible || !pdpFallback.nativeSizeVisible || !pdpFallback.nativeColourLabelVisible || !pdpFallback.nativeSizeLabelVisible || !pdpFallback.customColourHidden || !pdpFallback.customSizeHidden) {
+if (process.env.SSZ_RESPONSIVE_ONLY !== '1' && (!pdpFallback.nativeColourVisible || !pdpFallback.nativeSizeVisible || !pdpFallback.nativeColourLabelVisible || !pdpFallback.nativeSizeLabelVisible || !pdpFallback.customColourHidden || !pdpFallback.customSizeHidden)) {
   console.error('PDP native-select fallback UAT failed');
   process.exitCode = 1;
 }
 
-if (accountFunctional?.enabled && (
+if (process.env.SSZ_RESPONSIVE_ONLY !== '1' && accountFunctional?.enabled && (
   !accountFunctional.loggedOut || !accountFunctional.lostPassword || !accountFunctional.login || !accountFunctional.menu ||
   !accountFunctional.downloadsHidden || !accountFunctional.signOutLabel || !accountFunctional.signOutFunction || !accountFunctional.dashboard ||
   !accountFunctional.ordersPopulated || !accountFunctional.ordersEmpty || !accountFunctional.viewOrder || !accountFunctional.variableOrderItem ||
   !accountFunctional.addresses || !accountFunctional.editAddress || !accountFunctional.accountDetails || !accountFunctional.passwordFields ||
   !accountFunctional.paymentMethods || !accountFunctional.noJs || !accountFunctional.mobileNavigation || !accountFunctional.mobileOrders ||
-  !accountFunctional.desktopLayout || !accountFunctional.allWidths || accountFunctional.consoleErrors.length || accountFunctional.pageErrors.length
+  !accountFunctional.desktopLayout || !accountFunctional.responsiveLayout || !accountFunctional.layoutSeam.pass ||
+  !accountFunctional.dashboardResponsive || !accountFunctional.ordersResponsive || !accountFunctional.accountDetailsResponsive ||
+  !accountFunctional.allWidths || accountFunctional.consoleErrors.length || accountFunctional.pageErrors.length
 )) {
   console.error('Account functional UAT failed');
+  process.exitCode = 1;
+}
+
+if (process.env.SSZ_STORE012_RESPONSIVE === '1' && store012Responsive.some((record) => record.navigationError || record.document?.horizontalOverflow)) {
+  console.error('STORE-012 responsive geometry UAT failed');
+  process.exitCode = 1;
+}
+
+if (process.env.SSZ_STORE012_RESPONSIVE === '1' && store012ResponsiveSeams.some((seam) => !seam.pass)) {
+  console.error(`STORE-012 responsive seam UAT failed: ${store012ResponsiveSeams.filter((seam) => !seam.pass).map((seam) => seam.name).join(', ')}`);
   process.exitCode = 1;
 }

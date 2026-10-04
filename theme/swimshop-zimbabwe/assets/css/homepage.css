@@ -182,6 +182,11 @@
   .ssz-newsletter__inner { gap: var(--ssz-space-2xl); }
 }
 
+/* Keep the two four-item homepage rails balanced through the tablet shell. */
+@media (min-width: 768px) and (max-width: 1120px) {
+  .ssz-home-products ul.products { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
 @media (max-width: 767px) {
   .ssz-hero { min-height: 680px; }
   .ssz-hero__content { padding-block: 4rem 3rem; }

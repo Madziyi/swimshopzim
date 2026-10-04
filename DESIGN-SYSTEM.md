@@ -54,7 +54,9 @@ Font weights are limited to regular, medium, semibold, bold and heavy. The produ
 
 ## Responsive strategy
 
-**APPROVED:** The system is designed for exact UAT widths 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px. Existing breakpoints remain limited to 1120px, 782px, 767px and 390px. Mobile is a deliberate layout with its own gutters, section rhythm, hero sizing, grids and footer structure.
+**APPROVED:** The system is designed for exact UAT widths 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440 and 1920px. Shared layout seams remain limited to the 1120px desktop transition and 767px narrow/mobile transition: desktop begins at 1121px, while the mobile/navigation shell runs through 1120px and narrow mobile layout rules begin at 767px and below. Mobile is a deliberate layout with its own gutters, section rhythm, hero sizing, grids and footer structure.
+
+The retained component-specific exceptions are intentional and documented: the header keeps its 782px admin-bar adjustment, 600px full-width drawer rule and 390px compact-header rule; archives use a balanced three-column tablet range from 768–1024px and four columns from 1025px; the Cart Block keeps its 1024px intermediate two-column range; and PDP/Cart sticky summaries become normal-flow below 720px viewport height so controls remain reachable. No global token or second responsive type system was introduced.
 
 ## STORE-003 header and navigation
 
@@ -121,6 +123,12 @@ The account surface remains the native `[woocommerce_my_account]` shortcode and 
 The wide account shell uses the established page gutters and a restrained two-column split from 1121px: a 230–280px navigation rail followed by the native content column. WooCommerce clearfix pseudo-elements are suppressed only inside this grid so the native navigation and content remain real grid children. From 1120px down, the layout stacks content after navigation; the navigation becomes a two-column touch-friendly list on tablet and a single-column 48px-row list on narrow mobile widths. The active item uses a navy edge and muted surface, while Sign out is separated as the secondary action without changing its native customer-logout URL or nonce.
 
 Login, lost-password, notices, native WooCommerce forms and buttons reuse the global form/focus primitives. Orders retain native table semantics and become label/value rows on narrow screens through responsive `data-title` presentation. Addresses use a responsive billing/shipping grid, account details preserve WooCommerce's native field and password-change structure, and the direct Payment Methods endpoint keeps WooCommerce's native empty state. Downloads are intentionally absent from the account menu because this physical-product storefront does not expose digital downloads; this is a semantic menu decision, not a CSS hide.
+
+## STORE-012 responsive polish
+
+The responsive contract is verified across the ten required widths plus transition/stress widths through the focused `tools/visual-uat.mjs` sweep. The sweep records document width, primary container edges, header mode, grid columns, key component widths, sticky state, overlay state and logged-out account geometry for HOME, SHOP, PDP, SEARCH, CART and MY ACCOUNT.
+
+The homepage product rails use four balanced columns from 768–1120px so the four-item tablet rail does not leave an orphaned card. Archive grids intentionally retain three columns through 1024px because their measured card rhythm remains balanced, then switch to four columns at 1025px. The account navigation/content shell now follows the documented 1121px desktop split and stacks through 1120px. Short-height PDP and Cart summaries leave sticky positioning at or below 720px; fixed drawers keep internal scrolling for populated mini-cart actions.
 
 ## Accessibility contract
 

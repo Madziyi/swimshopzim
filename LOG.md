@@ -476,3 +476,25 @@ Downloads remains intentionally absent from customer-facing account navigation w
 DECISION
 STORE-011 is accepted. Pull request #9 was merged to `main` at merge commit `01bb778e0247ceb15b3f9bb8a6f677e3bbd0342e`. STORE-012 — Responsive polish becomes the next planned initiative. STORE-010 — Checkout styling remains deferred.
 
+## 2026-10-04 — STORE-012 implementation and verification
+
+SCOPE
+
+Created `luna/STORE-012-responsive-polish` from accepted `main` SHA `749224bd7a709f0299d9a9f9dbc5b5b019994aee`. STORE-010 remains deferred, Checkout was not changed, STORE-013 remains next, and the theme advances to version `0.12.0`.
+
+AUDIT
+
+The baseline Local audit at the required widths found no document horizontal overflow, console/page runtime errors or header/PDP mode regressions. The demonstrated visual issue was the four-item homepage New Arrivals/Best Sellers rails falling into three columns at tablet widths and leaving a single orphaned card; the homepage tablet rail now uses four columns from 768–1120px. The archive was reviewed separately and retains its balanced three-column 768–1024px range before switching to four columns at 1025px. The account stylesheet's previous `max-width: 900px` stack did not match the documented 1121px desktop split, so it now stacks through 1120px. No template, WooCommerce architecture or JavaScript behavior was changed for these corrections.
+
+IMPLEMENTATION
+
+Added focused STORE-012 geometry recording to `tools/visual-uat.mjs` for HOME, SHOP, PDP, SEARCH, CART and MY ACCOUNT. It records viewport/document width, primary container edges, header mode, grid modes/columns, key widths, sticky state, overlay state and account geometry; seam assertions cover 767/768, 1120/1121, the 1024/1025 archive exception and short-height purchase/cart reachability. The short-height matrix includes the brief's 390×667, 390×844, 430×932, 768×600, 768×1024, 1024×700, 1024×768, 1280×720 and 1440×900 cases, plus a populated two-line 360×667 mini-cart check. `SSZ_RESPONSIVE_ONLY=1` provides a focused run without duplicating the legacy functional suite.
+
+VERIFICATION
+
+The responsive and authenticated account runs exited 0 with no horizontal-overflow failures and all seam assertions passing. Manual screenshot review covered the ten required widths, including the 1120→1121 header/PDP/account transition, 360/390/430 mobile group, 768/1024/1120 tablet group, 1280/1440/1920 desktop group, authenticated account screenshots at 390/768/1024/1120/1121/1280, PDP states, Cart states and the populated 360×667 mini-cart. The mini-cart content reported `overflow-y:auto` and its action stack was reachable after internal scroll. Authenticated dashboard, orders and account-details checks passed at 1024/1120/1121/1280, with the 390px order rows readable; the full legacy ten-width regression also exited 0 with zero console/page errors. Search, Cart, PDP fallback and STORE-003–009 regression checks passed. PHP lint, JavaScript syntax, JSON parsing, `git diff --check` and one-top-level-directory packaging passed. STORE-011 fixture credentials were used only in Local and were not committed or exported.
+
+HANDOFF
+
+STORE-012 is implemented and ready for Sol review on `luna/STORE-012-responsive-polish`; it is not marked accepted here and no merge was performed. Generated Local screenshots remain ignored under `artifacts/uat/`, and no Local runtime data is part of the branch.
+
