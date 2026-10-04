@@ -1,9 +1,9 @@
 # Current Initiative
 
-**Active Initiative:** STORE-012 — Responsive polish
-**Status:** IN IMPLEMENTATION
-**Owner:** Luna
+**Active Initiative:** STORE-013 — Accessibility
+**Status:** PLANNED / awaiting execution approval
+**Owner:** Sol until execution is handed to Luna
 
-**Previous:** STORE-011 — Customer account styling
+**Previous:** STORE-012 — Responsive polish
 **Deferred:** STORE-010 — Checkout styling
-**Next:** STORE-013 — Accessibility
+**Next:** STORE-014 — Performance
