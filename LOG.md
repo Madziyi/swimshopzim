@@ -440,3 +440,25 @@ Checkout styling will be revisited later when the project is ready to address pa
 NEXT
 Advance active planning to STORE-011 — Customer account styling. STORE-012 — Responsive polish follows STORE-011.
 
+## 2026-10-04 — STORE-011 implementation and verification
+
+SCOPE
+
+Created `luna/STORE-011-account-styling` from accepted `main` SHA `275bea2`. STORE-010 remains deferred, checkout was not changed, and STORE-012 was not started. The theme advances to version `0.11.0`.
+
+IMPLEMENTATION
+
+Kept page ID 11 as the native `[woocommerce_my_account]` shortcode and preserved WooCommerce 11.1.2 server-rendered account endpoints. Added `inc/woocommerce/account.php` for the exact `MY ACCOUNT` title, semantic Downloads removal, native customer-logout relabeling to `Sign out`, and endpoint content headings. Added account-only `assets/css/account.css` for the 1121px desktop nav/content grid, stacked tablet/mobile navigation, active/secondary menu states, native login/lost-password/forms, notices, responsive orders, addresses, order details, account details and the native Payment Methods empty state. No WooCommerce account template override or account JavaScript was introduced.
+
+LOCAL FIXTURES
+
+Created only Local runtime fixtures: one populated customer with order #120, simple and variable line items, billing/shipping addresses, and one empty customer with no orders or addresses. Fixture users, credentials, order rows, uploads and sessions are not tracked, exported or packaged.
+
+VERIFICATION
+
+The final Playwright visual UAT passed STORE-011 logged-out/login/lost-password, exact single H1, menu contract, Downloads omission, Sign out endpoint/function, dashboard, populated/empty orders, native order details and variation text, addresses/edit address, account details/password fields, Payment Methods empty state, JavaScript-disabled navigation and no-overflow checks at `360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440, 1920px`. The same run passed the existing STORE-003–009 regression suite with zero console/page errors. PHP lint, JavaScript syntax, JSON parsing, `git diff --check` and one-top-level-directory theme packaging all passed; the package contains no Local runtime fixtures or credentials.
+
+HANDOFF
+
+STORE-011 implementation and Local verification are complete on `luna/STORE-011-account-styling`; the branch remains unmerged and awaits Sol review. Registration remains disabled in Local by configuration, and Payment Methods is directly reachable as WooCommerce's native empty state but is not in the account menu because no saved-method gateway is configured.
+

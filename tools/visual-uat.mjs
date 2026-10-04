@@ -8,6 +8,10 @@ const baseUrl = process.env.SSZ_LOCAL_URL ?? 'http://swimshop-zimbabwe.local/';
 const widths = [360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440, 1920];
 const outputDir = path.resolve('artifacts/uat');
 const requireLocalMenu = process.env.SSZ_REQUIRE_LOCAL_MENU === '1';
+const localHost = process.env.SSZ_LOCAL_HOST;
+
+const browserLaunchArgs = localHost ? [`--host-resolver-rules=MAP ${localHost} 127.0.0.1`] : [];
+const contextOptions = (options) => options;
 
 const fallbackSources = await Promise.all([
   fs.readFile(path.resolve('theme/swimshop-zimbabwe/inc/navigation.php'), 'utf8'),
@@ -651,7 +655,7 @@ const inspectCartFunctional = async (browser) => {
     consoleErrors: [],
     pageErrors: [],
   };
-  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const context = await browser.newContext(contextOptions({ viewport: { width: 1280, height: 900 } }));
   const page = await context.newPage();
   page.on('console', (message) => { if (message.type() === 'error') result.consoleErrors.push(message.text()); });
   page.on('pageerror', (error) => result.pageErrors.push(error.message));
@@ -815,7 +819,7 @@ const inspectCartFunctional = async (browser) => {
     await context.close();
   }
 
-  const noJsContext = await browser.newContext({ viewport: { width: 1280, height: 900 }, javaScriptEnabled: false });
+  const noJsContext = await browser.newContext(contextOptions({ viewport: { width: 1280, height: 900 }, javaScriptEnabled: false }));
   const noJsPage = await noJsContext.newPage();
   try {
     await noJsPage.goto(new URL('product/store-005-test-simple-performance-suit/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
@@ -988,7 +992,240 @@ const inspectArchivePage = async (page, expectedColumns) => {
   return { ...archive, drawer: drawerState };
 };
 
-const browser = await chromium.launch({ headless: true, executablePath });
+const inspectAccountUat = async (browser) => {
+  const populatedUser = process.env.SSZ_ACCOUNT_USER;
+  const populatedPassword = process.env.SSZ_ACCOUNT_PASSWORD;
+  const emptyUser = process.env.SSZ_ACCOUNT_EMPTY_USER;
+  const emptyPassword = process.env.SSZ_ACCOUNT_EMPTY_PASSWORD;
+  const required = process.env.SSZ_REQUIRE_ACCOUNT === '1';
+  const credentialsPresent = populatedUser && populatedPassword && emptyUser && emptyPassword;
+  const result = {
+    enabled: Boolean(credentialsPresent),
+    skipped: false,
+    setupMessage: null,
+    loggedOut: false,
+    registration: { enabled: null, present: null },
+    lostPassword: false,
+    login: false,
+    menu: false,
+    downloadsHidden: false,
+    signOutLabel: false,
+    signOutFunction: false,
+    dashboard: false,
+    ordersPopulated: false,
+    ordersEmpty: false,
+    viewOrder: false,
+    variableOrderItem: false,
+    addresses: false,
+    editAddress: false,
+    accountDetails: false,
+    passwordFields: false,
+    paymentMethods: false,
+    noJs: false,
+    mobileNavigation: false,
+    mobileOrders: false,
+    desktopLayout: false,
+    allWidths: false,
+    widthChecks: [],
+    consoleErrors: [],
+    pageErrors: [],
+  };
+
+  if (!credentialsPresent) {
+    result.skipped = true;
+    result.setupMessage = 'Account UAT skipped; set SSZ_ACCOUNT_USER, SSZ_ACCOUNT_PASSWORD, SSZ_ACCOUNT_EMPTY_USER, and SSZ_ACCOUNT_EMPTY_PASSWORD.';
+    if (required) {
+      throw new Error(result.setupMessage);
+    }
+    return result;
+  }
+
+  const accountUrl = (suffix = '') => new URL(`my-account/${suffix}`, baseUrl).href;
+  let storageState = null;
+  const context = await browser.newContext(contextOptions({ viewport: { width: 1280, height: 900 } }));
+  const page = await context.newPage();
+  page.on('console', (message) => { if (message.type() === 'error') result.consoleErrors.push(message.text()); });
+  page.on('pageerror', (error) => result.pageErrors.push(error.message));
+
+  try {
+    await page.goto(accountUrl(), { waitUntil: 'networkidle', timeout: 30000 });
+    result.loggedOut = await page.evaluate(() => {
+      const h1 = [...document.querySelectorAll('main h1')].map((node) => node.textContent.trim());
+      return !document.body.classList.contains('logged-in') && h1.length === 1 && h1[0].toUpperCase() === 'MY ACCOUNT' &&
+        Boolean(document.querySelector('form.login #username')) && Boolean(document.querySelector('form.login #password')) &&
+        Boolean(document.querySelector('form.login button[type="submit"]')) &&
+        Boolean(document.querySelector('form.login input[type="checkbox"]')) &&
+        Boolean(document.querySelector('form.login .lost_password a')) &&
+        Boolean(document.querySelector('link[href*="account.css"]')) &&
+        document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2;
+    });
+
+    result.registration = await page.evaluate(() => ({
+      enabled: Boolean(document.querySelector('form.register')),
+      present: Boolean(document.querySelector('form.register')),
+    }));
+
+    await page.goto(accountUrl('lost-password/'), { waitUntil: 'networkidle', timeout: 30000 });
+    result.lostPassword = await page.evaluate(() => {
+      const h1 = [...document.querySelectorAll('main h1')].map((node) => node.textContent.trim());
+      return h1.length === 1 && h1[0].toUpperCase() === 'MY ACCOUNT' &&
+        Boolean(document.querySelector('input#user_login[autocomplete="username"]')) &&
+        Boolean(document.querySelector('form.lost_reset_password button[type="submit"], form.woocommerce-ResetPassword button[type="submit"]')) &&
+        document.documentElement.scrollWidth <= document.documentElement.clientWidth + 2;
+    });
+
+    await page.goto(accountUrl(), { waitUntil: 'networkidle', timeout: 30000 });
+    await page.locator('form.login #username').fill(populatedUser);
+    await page.locator('form.login #password').fill(populatedPassword);
+    await page.locator('form.login button[type="submit"]').click();
+    await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+
+    const loginState = await page.evaluate(() => {
+      const links = [...document.querySelectorAll('.woocommerce-MyAccount-navigation a')];
+      const labels = links.map((link) => link.textContent.trim());
+      const logout = document.querySelector('.woocommerce-MyAccount-navigation-link--customer-logout a');
+      return {
+        loggedIn: document.body.classList.contains('logged-in'),
+        h1: [...document.querySelectorAll('main h1')].map((node) => node.textContent.trim()),
+        labels,
+        downloads: document.querySelectorAll('.woocommerce-MyAccount-navigation-link--downloads, .woocommerce-MyAccount-navigation a[href*="/downloads/"]').length,
+        dashboardActive: Boolean(document.querySelector('.woocommerce-MyAccount-navigation-link--dashboard.is-active a[aria-current="page"]')),
+        logoutText: logout?.textContent.trim() ?? '',
+        logoutHref: logout?.getAttribute('href') ?? '',
+      };
+    });
+    const expectedMenu = ['Dashboard', 'Orders', 'Addresses', 'Account details', 'Sign out'];
+    result.login = loginState.loggedIn && loginState.h1.length === 1 && loginState.h1[0].toUpperCase() === 'MY ACCOUNT';
+    result.menu = expectedMenu.every((label) => loginState.labels.includes(label)) && loginState.labels.length === expectedMenu.length && loginState.dashboardActive;
+    result.downloadsHidden = loginState.downloads === 0;
+    result.signOutLabel = loginState.logoutText === 'Sign out' && /customer-logout/.test(loginState.logoutHref) && /_wpnonce=/.test(loginState.logoutHref);
+    storageState = await context.storageState();
+
+    result.dashboard = await page.evaluate(() => {
+      const content = document.querySelector('.woocommerce-MyAccount-content')?.innerText ?? '';
+      const heading = document.querySelector('.ssz-account-content__heading')?.textContent.trim().toUpperCase();
+      return heading === 'DASHBOARD' && /Hello/i.test(content) && !document.querySelector('.woocommerce-MyAccount-navigation-link--downloads');
+    });
+
+    const ordersResponse = await page.goto(accountUrl('orders/'), { waitUntil: 'networkidle', timeout: 30000 });
+    const orderRow = page.locator('.woocommerce-orders-table tbody tr').first();
+    const orderText = await page.locator('.woocommerce-MyAccount-content').innerText();
+    const viewOrderHref = await page.locator('.woocommerce-orders-table__cell-order-actions a, .woocommerce-orders-table__cell-order-number a').first().getAttribute('href');
+    result.ordersPopulated = (ordersResponse?.status() ?? 500) < 400 && await orderRow.count() === 1 && /Processing/i.test(orderText) && /\$218\.00/.test(orderText) && Boolean(viewOrderHref);
+
+    if (viewOrderHref) {
+      const detailResponse = await page.goto(viewOrderHref, { waitUntil: 'networkidle', timeout: 30000 });
+      const detailText = await page.locator('.woocommerce-MyAccount-content').innerText();
+      const detailMarkup = await page.evaluate(() => ({
+        h1: [...document.querySelectorAll('main h1')].filter((node) => node.textContent.trim().toUpperCase() === 'MY ACCOUNT').length,
+        table: Boolean(document.querySelector('.woocommerce-table--order-details')),
+      }));
+      result.viewOrder = (detailResponse?.status() ?? 500) < 400 && detailMarkup.h1 === 1 && detailMarkup.table && /Order details/i.test(detailText) && /Billing address/i.test(detailText) && /\$218\.00/.test(detailText);
+      result.variableOrderItem = /STORE-007 TEST Variable Product Page/i.test(detailText) && /Black/i.test(detailText) && /\bM\b/.test(detailText) && !/attribute_pa_/i.test(detailText);
+    }
+
+    const addressResponse = await page.goto(accountUrl('edit-address/'), { waitUntil: 'networkidle', timeout: 30000 });
+    const addressText = await page.locator('.woocommerce-MyAccount-content').innerText();
+    result.addresses = (addressResponse?.status() ?? 500) < 400 && /Billing address/i.test(addressText) && /Shipping address/i.test(addressText) && /STORE-011 TEST/i.test(addressText) &&
+      await page.locator('.woocommerce-Address-title a').count() >= 2;
+
+    const editAddressResponse = await page.goto(accountUrl('edit-address/billing/'), { waitUntil: 'networkidle', timeout: 30000 });
+    result.editAddress = (editAddressResponse?.status() ?? 500) < 400 && await page.locator('#billing_country').count() === 1 && await page.locator('#billing_state').count() === 1 &&
+      await page.locator('label[for="billing_first_name"], label[for="billing_address_1"]').count() >= 2 && await page.locator('button[name="save_address"]').count() === 1;
+
+    const detailsResponse = await page.goto(accountUrl('edit-account/'), { waitUntil: 'networkidle', timeout: 30000 });
+    result.accountDetails = (detailsResponse?.status() ?? 500) < 400 &&
+      await page.locator('#account_first_name, #account_last_name, #account_display_name, #account_email').count() === 4 &&
+      await page.locator('button[name="save_account_details"]').count() === 1;
+    result.passwordFields = await page.locator('#password_current[autocomplete="current-password"], #password_1[autocomplete="new-password"], #password_2[autocomplete="new-password"]').count() === 3 &&
+      await page.locator('fieldset legend').filter({ hasText: 'Password change' }).count() === 1;
+
+    const paymentResponse = await page.goto(accountUrl('payment-methods/'), { waitUntil: 'networkidle', timeout: 30000 });
+    const paymentText = await page.locator('.woocommerce-MyAccount-content').innerText();
+    result.paymentMethods = (paymentResponse?.status() ?? 500) < 400 && /Payment methods/i.test(await page.locator('main').innerText()) &&
+      /No saved methods found/i.test(paymentText) && !/Visa|Mastercard|PayPal|EcoCash|Paynow/i.test(paymentText);
+
+    const widthChecks = [];
+    for (const width of widths) {
+      const widthContext = await browser.newContext(contextOptions({ viewport: { width, height: width < 768 ? 800 : 900 }, storageState }));
+      const widthPage = await widthContext.newPage();
+      await widthPage.goto(accountUrl(), { waitUntil: 'networkidle', timeout: 30000 });
+      const accountCheck = await widthPage.evaluate((targetWidth) => {
+        const root = document.documentElement;
+        const nav = document.querySelector('.woocommerce-MyAccount-navigation');
+        const content = document.querySelector('.woocommerce-MyAccount-content');
+        const shell = document.querySelector('.ssz-entry__content > .woocommerce');
+        const navRect = nav?.getBoundingClientRect();
+        const contentRect = content?.getBoundingClientRect();
+        return {
+          width: targetWidth,
+          h1: [...document.querySelectorAll('main h1')].map((node) => node.textContent.trim()),
+          navLinks: document.querySelectorAll('.woocommerce-MyAccount-navigation a').length,
+          downloads: document.querySelectorAll('.woocommerce-MyAccount-navigation-link--downloads, .woocommerce-MyAccount-navigation a[href*="/downloads/"]').length,
+          overflow: root.scrollWidth > root.clientWidth + 2,
+          navBeforeContent: Boolean(navRect && contentRect && navRect.top < contentRect.top),
+          mobileStack: targetWidth <= 767 && getComputedStyle(document.querySelector('.woocommerce-MyAccount-navigation ul')).display === 'block',
+          desktopGrid: targetWidth >= 1121 && getComputedStyle(shell).display === 'grid' && navRect?.width >= 230 && navRect?.width <= 280 && Boolean(contentRect?.width),
+        };
+      }, width);
+      await widthPage.goto(accountUrl('orders/'), { waitUntil: 'networkidle', timeout: 30000 });
+      const orderCheck = await widthPage.evaluate((targetWidth) => ({
+        orderRows: document.querySelectorAll('.woocommerce-orders-table tbody tr').length,
+        orderOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
+        mobileOrder: targetWidth <= 430 && getComputedStyle(document.querySelector('.woocommerce-orders-table tbody tr th')).display === 'block' && getComputedStyle(document.querySelector('.woocommerce-orders-table tbody tr td')).display === 'flex',
+      }), width);
+      widthChecks.push({ ...accountCheck, ...orderCheck });
+      await widthPage.close();
+      await widthContext.close();
+    }
+    result.widthChecks = widthChecks;
+    result.allWidths = widthChecks.length === widths.length && widthChecks.every((check) => check.h1.length === 1 && check.h1[0].toUpperCase() === 'MY ACCOUNT' && check.navLinks === expectedMenu.length && check.downloads === 0 && !check.overflow && check.orderRows === 1 && !check.orderOverflow);
+    result.mobileNavigation = widthChecks.some((check) => check.width === 390 && check.mobileStack && check.navBeforeContent);
+    result.mobileOrders = widthChecks.some((check) => check.width === 390 && check.mobileOrder && !check.orderOverflow);
+    result.desktopLayout = widthChecks.some((check) => check.width === 1280 && check.desktopGrid);
+
+    const noJsContext = await browser.newContext(contextOptions({ viewport: { width: 1280, height: 900 }, javaScriptEnabled: false, storageState }));
+    const noJsPage = await noJsContext.newPage();
+    await noJsPage.goto(accountUrl(), { waitUntil: 'networkidle', timeout: 30000 });
+    await noJsPage.goto(accountUrl('orders/'), { waitUntil: 'networkidle', timeout: 30000 });
+    const noJsState = await noJsPage.evaluate(() => ({
+      h1: [...document.querySelectorAll('main h1')].map((node) => node.textContent.trim()),
+      links: [...document.querySelectorAll('.woocommerce-MyAccount-navigation a')].map((link) => ({ href: link.href, text: link.textContent.trim() })),
+      overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
+    }));
+    result.noJs = noJsState.h1.length === 1 && noJsState.h1[0].toUpperCase() === 'MY ACCOUNT' && noJsState.links.length === expectedMenu.length &&
+      noJsState.links.every((link) => !/downloads/.test(link.href)) && noJsState.links.some((link) => link.text === 'Sign out' && /customer-logout/.test(link.href) && /_wpnonce=/.test(link.href)) && !noJsState.overflow;
+    await noJsPage.close();
+    await noJsContext.close();
+
+    const logoutHref = await page.locator('.woocommerce-MyAccount-navigation-link--customer-logout a').getAttribute('href');
+    if (logoutHref) {
+      await page.goto(logoutHref, { waitUntil: 'networkidle', timeout: 30000 });
+      result.signOutFunction = await page.evaluate(() => !document.body.classList.contains('logged-in')) && await page.locator('form.login #username').count() === 1;
+    }
+
+    await page.goto(accountUrl(), { waitUntil: 'networkidle', timeout: 30000 });
+    await page.locator('form.login #username').fill(emptyUser);
+    await page.locator('form.login #password').fill(emptyPassword);
+    await page.locator('form.login button[type="submit"]').click();
+    await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+    await page.goto(accountUrl('orders/'), { waitUntil: 'networkidle', timeout: 30000 });
+    const emptyText = await page.locator('.woocommerce-MyAccount-content').innerText();
+    result.ordersEmpty = await page.locator('.woocommerce-orders-table tbody tr').count() === 0 && /No order has been made yet/i.test(emptyText) && await page.locator('a.wc-forward, a[href*="/shop/"]').count() > 0;
+
+    const emptyLogoutHref = await page.locator('.woocommerce-MyAccount-navigation-link--customer-logout a').getAttribute('href');
+    if (emptyLogoutHref) await page.goto(emptyLogoutHref, { waitUntil: 'networkidle', timeout: 30000 });
+  } catch (error) {
+    result.pageErrors.push(error.message);
+  } finally {
+    await page.close();
+    await context.close();
+  }
+
+  return result;
+};
+
+const browser = await chromium.launch({ headless: true, executablePath, args: browserLaunchArgs });
 const results = [];
 let archiveFunctional = {
   filterSubmit: false,
@@ -1067,11 +1304,12 @@ let cartFunctional = {
   consoleErrors: [],
   pageErrors: [],
 };
+let accountFunctional = null;
 
 try {
   for (const width of widths) {
     const height = width < 768 ? 800 : 900;
-    const context = await browser.newContext({ viewport: { width, height } });
+    const context = await browser.newContext(contextOptions({ viewport: { width, height } }));
     const page = await context.newPage();
     const consoleErrors = [];
     const pageErrors = [];
@@ -1489,7 +1727,7 @@ try {
 
   cartFunctional = await inspectCartFunctional(browser);
 
-  const fallbackContext = await browser.newContext({ viewport: { width: 1280, height: 900 }, javaScriptEnabled: false });
+  const fallbackContext = await browser.newContext(contextOptions({ viewport: { width: 1280, height: 900 }, javaScriptEnabled: false }));
   const fallbackPage = await fallbackContext.newPage();
   await fallbackPage.goto(new URL('product/store-007-test-variable-product-page/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
   pdpFallback = await inspectProductPageFallback(fallbackPage);
@@ -1497,7 +1735,7 @@ try {
   await fallbackContext.close();
 
   try {
-    const searchContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const searchContext = await browser.newContext(contextOptions({ viewport: { width: 1280, height: 900 } }));
     const searchPage = await searchContext.newPage();
     searchPage.on('console', (message) => {
       if (message.type() === 'error') searchFunctional.consoleErrors.push(message.text());
@@ -1643,7 +1881,7 @@ try {
   }
 
 try {
-  const functionalContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const functionalContext = await browser.newContext(contextOptions({ viewport: { width: 1280, height: 900 } }));
   const functionalPage = await functionalContext.newPage();
   functionalPage.on('console', (message) => {
     if (message.type() === 'error') archiveFunctional.consoleErrors.push(message.text());
@@ -1698,6 +1936,8 @@ try {
 } catch (error) {
   archiveFunctional.pageErrors.push(error.message);
 }
+
+accountFunctional = await inspectAccountUat(browser);
 
 } finally {
   await browser.close();
@@ -1775,9 +2015,9 @@ if (process.env.SSZ_UAT_SUMMARY_ONLY === '1') {
     },
     cart: result.cart,
   })), null, 2));
-  console.log(JSON.stringify({ searchFunctional, cartFunctional }, null, 2));
+  console.log(JSON.stringify({ searchFunctional, cartFunctional, accountFunctional }, null, 2));
 } else {
-  console.log(JSON.stringify({ baseUrl, executablePath, requireLocalMenu, fallbackContract, pdpFallback, results, archiveFunctional, searchFunctional, cartFunctional }, null, 2));
+  console.log(JSON.stringify({ baseUrl, executablePath, requireLocalMenu, localHost, fallbackContract, pdpFallback, results, archiveFunctional, searchFunctional, cartFunctional, accountFunctional }, null, 2));
 }
 
 const failures = results.filter((result) => {
@@ -1868,5 +2108,17 @@ if (!cartFunctional.headerBag || !cartFunctional.autoOpen || !cartFunctional.aja
 
 if (!pdpFallback.nativeColourVisible || !pdpFallback.nativeSizeVisible || !pdpFallback.nativeColourLabelVisible || !pdpFallback.nativeSizeLabelVisible || !pdpFallback.customColourHidden || !pdpFallback.customSizeHidden) {
   console.error('PDP native-select fallback UAT failed');
+  process.exitCode = 1;
+}
+
+if (accountFunctional?.enabled && (
+  !accountFunctional.loggedOut || !accountFunctional.lostPassword || !accountFunctional.login || !accountFunctional.menu ||
+  !accountFunctional.downloadsHidden || !accountFunctional.signOutLabel || !accountFunctional.signOutFunction || !accountFunctional.dashboard ||
+  !accountFunctional.ordersPopulated || !accountFunctional.ordersEmpty || !accountFunctional.viewOrder || !accountFunctional.variableOrderItem ||
+  !accountFunctional.addresses || !accountFunctional.editAddress || !accountFunctional.accountDetails || !accountFunctional.passwordFields ||
+  !accountFunctional.paymentMethods || !accountFunctional.noJs || !accountFunctional.mobileNavigation || !accountFunctional.mobileOrders ||
+  !accountFunctional.desktopLayout || !accountFunctional.allWidths || accountFunctional.consoleErrors.length || accountFunctional.pageErrors.length
+)) {
+  console.error('Account functional UAT failed');
   process.exitCode = 1;
 }

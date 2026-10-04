@@ -135,7 +135,10 @@ For fresh-install fallback verification, use a disposable Local database or a te
 
 ## Account
 
-- Login, registration, account navigation and order views remain readable and usable.
+- STORE-011 keeps page ID 11 at `/my-account/` as the native `[woocommerce_my_account]` shortcode. WooCommerce remains authoritative for login, lost password, dashboard, orders, order detail, addresses, account details, password change fields and the configured Payment Methods endpoint; the theme does not override account templates or require account JavaScript.
+- The logged-out contract is one exact `MY ACCOUNT` H1, native username/email and password fields, Remember me, Log in, lost-password recovery and no registration form when Local registration is disabled. The authenticated menu is exactly Dashboard, Orders, Addresses, Account details and Sign out; Downloads is absent from the rendered menu, while Sign out retains the native `customer-logout` endpoint and nonce.
+- Local-only populated and empty customer fixtures cover a processing order with simple and variable items, billing/shipping addresses, account details/password fields and an empty order state. Direct Payment Methods remains native and shows `No saved methods found.` without fabricated cards or provider labels. Credentials, database rows, uploads and order fixtures are not repository artifacts.
+- Automated account UAT passed login/logout, dashboard, populated/empty orders, native order details and variation text, addresses/edit address, account details/password fields, Payment Methods, JavaScript-disabled navigation, no horizontal overflow and zero console/page errors. Responsive checks passed at `360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440, 1920px`; desktop uses the nav/content split from 1121px, while tablet/mobile stacks the navigation before native content and converts narrow order tables to readable rows.
 
 ## Accessibility
 
