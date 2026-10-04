@@ -11,7 +11,7 @@
 - [x] STORE-009 — Cart and mini-cart
 - [-] STORE-010 — Checkout styling (deferred)
 - [x] STORE-011 — Customer account styling
-- [ ] STORE-012 — Responsive polish
+- [x] STORE-012 — Responsive polish
 - [ ] STORE-013 — Accessibility
 - [ ] STORE-014 — Performance
 - [ ] STORE-015 — WooCommerce integration testing
