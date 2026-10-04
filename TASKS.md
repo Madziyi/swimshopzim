@@ -10,7 +10,7 @@
 - [x] STORE-008 — Search
 - [x] STORE-009 — Cart and mini-cart
 - [-] STORE-010 — Checkout styling (deferred)
-- [ ] STORE-011 — Customer account styling
+- [x] STORE-011 — Customer account styling
 - [ ] STORE-012 — Responsive polish
 - [ ] STORE-013 — Accessibility
 - [ ] STORE-014 — Performance
