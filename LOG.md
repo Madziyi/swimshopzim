@@ -462,3 +462,17 @@ HANDOFF
 
 STORE-011 implementation and Local verification are complete on `luna/STORE-011-account-styling`; the branch remains unmerged and awaits Sol review. Registration remains disabled in Local by configuration, and Payment Methods is directly reachable as WooCommerce's native empty state but is not in the account menu because no saved-method gateway is configured.
 
+## 2026-10-04 — STORE-011 Sol acceptance
+
+VERIFICATION
+Sol reviewed the complete STORE-011 branch through commit `3adcedceb4c25d46e77943a1d69c9e61c8c5cb87`. Review covered the retained native `[woocommerce_my_account]` architecture, account-only asset loading, semantic Downloads removal, native customer-logout relabeling to `Sign out`, stable `MY ACCOUNT` title treatment, endpoint content headings, wide desktop account shell, stacked tablet/mobile navigation, logged-out login/lost-password styling, responsive orders/order detail, addresses/edit-address forms, account details/password fields and native Payment Methods handling.
+
+VERIFICATION
+The branch uses no WooCommerce account template overrides and no account-specific JavaScript. Local-only populated/empty customer fixtures and a Local-only order exercise real Woo account states without packaging credentials or runtime data. The ten-width account UAT and STORE-003–009 regressions passed with zero console/page errors, along with PHP/JavaScript/JSON/diff/package checks.
+
+RUNTIME DECISIONS
+Downloads remains intentionally absent from customer-facing account navigation while the underlying Woo endpoint is left intact. Registration is currently disabled in Local. Payment Methods remains WooCommerce-owned and directly reachable as an empty native state, but is not shown in the account menu because the Local runtime has no compatible saved-method gateway configured.
+
+DECISION
+STORE-011 is accepted. Pull request #9 was merged to `main` at merge commit `01bb778e0247ceb15b3f9bb8a6f677e3bbd0342e`. STORE-012 — Responsive polish becomes the next planned initiative. STORE-010 — Checkout styling remains deferred.
+
