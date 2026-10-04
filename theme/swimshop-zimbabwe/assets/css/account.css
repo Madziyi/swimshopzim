@@ -477,7 +477,7 @@
   background: var(--ssz-color-brand);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1120px) {
   .woocommerce-account.logged-in .ssz-entry__content > .woocommerce {
     display: block;
   }

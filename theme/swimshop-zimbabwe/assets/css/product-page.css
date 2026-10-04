@@ -536,6 +536,11 @@
   }
 }
 
+/* A short viewport should scroll the purchase summary with the gallery. */
+@media (min-width: 768px) and (max-height: 720px) {
+  .ssz-product-page div.product div.summary { position: static; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ssz-product-page .woocommerce-product-gallery__wrapper {
     scroll-behavior: auto;
