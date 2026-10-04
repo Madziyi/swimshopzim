@@ -498,3 +498,17 @@ HANDOFF
 
 STORE-012 is implemented and ready for Sol review on `luna/STORE-012-responsive-polish`; it is not marked accepted here and no merge was performed. Generated Local screenshots remain ignored under `artifacts/uat/`, and no Local runtime data is part of the branch.
 
+## 2026-10-04 — STORE-012 Sol acceptance
+
+VERIFICATION
+Sol reviewed the complete STORE-012 branch through commit `edc03b02508aac789bb58a05ec1f3f04f5e69065`. Review covered the focused responsive corrections, theme version `0.12.0`, four-column homepage product rails from 768–1120px, retained archive three-column tablet exception through 1024px, account stacking through 1120px with the desktop grid beginning at 1121px, and short-height PDP/Cart sticky-summary release at or below 720px.
+
+VERIFICATION
+The review correction closed the authenticated My Account verification gap. Account UAT now covers 14 widths including 899/900/901/1119, explicitly asserts the 1120 stacked → 1121 desktop-grid seam, verifies Downloads remains absent and Sign out remains native, and checks dashboard, orders, account-details fields and password fields at 1024/1120/1121/1280. Authenticated screenshots were reviewed at 390/768/1024/1120/1121/1280. The responsive sweep also retains HOME/SHOP/PDP/SEARCH/CART/MY ACCOUNT geometry, 767/768, 1120/1121 and 1024/1025 seam assertions, short-height coverage and the populated 360×667 mini-cart reachability test.
+
+VERIFICATION
+The complete STORE-003–009 and STORE-011 regressions passed with zero console/page errors. PHP lint, JavaScript syntax, JSON validation, `git diff --check` and package validation passed. No checkout implementation, runtime fixture export, credentials or generated screenshots are part of the theme package.
+
+DECISION
+STORE-012 is accepted. Pull request #10 was merged to `main` at merge commit `210beb4e12a4df4e26e5737157f35cd2b08ac440`. STORE-013 — Accessibility becomes the next planned initiative. STORE-010 — Checkout styling remains deferred.
+
