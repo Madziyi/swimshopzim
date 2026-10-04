@@ -41,6 +41,10 @@ function ssz_enqueue_assets() {
 			wp_enqueue_style( 'ssz-archive', SSZ_THEME_URI . '/assets/css/archive.css', array( 'ssz-product-card' ), SSZ_THEME_VERSION );
 			wp_enqueue_script( 'ssz-archive-filters', SSZ_THEME_URI . '/assets/js/archive-filters.js', array(), SSZ_THEME_VERSION, true );
 		}
+
+		if ( function_exists( 'is_account_page' ) && is_account_page() ) {
+			wp_enqueue_style( 'ssz-account', SSZ_THEME_URI . '/assets/css/account.css', array( 'ssz-cart', 'ssz-woocommerce' ), SSZ_THEME_VERSION );
+		}
 	}
 
 	if ( is_front_page() ) {

@@ -1,6 +1,6 @@
 # SwimShop Zimbabwe Theme
 
-Version: 0.1.0 (STORE-001 foundation)
+Version: 0.11.0 (STORE-011 customer account styling)
 
 A custom WooCommerce theme for SwimShop Zimbabwe. The storefront is designed to support a premium aquatic-sports retail experience while leaving commerce operations to WooCommerce.
 
@@ -124,8 +124,10 @@ Not yet complete:
 - Final product variation UI / size guide / recently viewed (STORE-007)
 - AJAX predictive search (STORE-008)
 - Cart drawer (STORE-009)
-- Checkout/account final styling (STORE-010/011)
+- Checkout styling (STORE-010, deferred)
 - Full accessibility/performance audits (STORE-013/014)
+
+Completed account styling (STORE-011) keeps the native WooCommerce My Account shortcode and endpoints, removes Downloads semantically for this physical-product storefront, labels the native logout action `Sign out`, and provides responsive account navigation, orders, addresses, login and account-detail presentation. Local fixture users and runtime data are not part of the theme package.
 
 ## Validation checklist for this build
 
