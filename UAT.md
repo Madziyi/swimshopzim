@@ -38,16 +38,16 @@ For fresh-install fallback verification, use a disposable Local database or a te
 
 - Hero, category grid, brands, product sections, campaign and proposition blocks render safely with empty/default content.
 - Customizer content and desktop/mobile hero images render when configured.
-- Homepage order is Hero, Shop by Category, New Arrivals, Shop the Brands, Shop by Activity, Performance Campaign, Best Sellers, Race Day / Training Equipment, Why SwimShop Zimbabwe, Newsletter, then Footer.
-- Hero exposes one H1, desktop/mobile media controls, two CTA links and left/center content alignment; the primary hero image is the only homepage image with high fetch priority.
-- Categories use configurable top-level WooCommerce category selectors, with preferred-slug/catalog fallback and branded media fallback when thumbnails are absent.
+- Homepage order is Hero Carousel, New Arrivals, Shop the Brands, Shop by Category, Best Sellers, Shop by Activity, Performance Campaign, Race Day / Training Equipment, Why SwimShop Zimbabwe, Newsletter, then Footer.
+- The hero is a fixed four-slot carousel with configurable desktop/mobile media, copy, alignment and two optional CTAs per slide. It renders one H1, loops/autoplays only with at least two enabled slides, pauses for hover/focus/hidden-document states, supports dots and swipe, disables autoplay/animation for reduced motion, and exposes one no-JavaScript slide.
+- Categories are exactly Men, Women, Kids and Equipment from native `product_cat` terms. The four cards use equal media geometry: two columns through 1120px and four columns from 1121px, with no Goggle or fifth/lead card.
 - Brands use the native `product_brand` taxonomy, term logo URLs when present, accessible brand-name text fallback otherwise, native term links and the canonical View All Brands link.
 - Shop by Activity contains Racing, Training and Open Water editorial links with one prominent title per card; campaign and Race Day / Training Equipment panels remain link-based and use intentional fallback treatments without placeholder labels.
 - Performance Campaign establishes an isolated stacking context with media at layer 0, one image wash at layer 1 and content at layer 2. Real-media verification must exercise desktop/mobile campaign sources and preserve CTA contrast/clickability; fallback media must remain intentional.
-- Homepage Customizer settings live under the `SwimShop Homepage` panel with separate Hero, Categories, Shop by Activity, Performance Campaign, Product Sections, Race Day / Training, Store Proposition and Newsletter sections. Existing `ssz_*` theme-mod IDs remain unchanged.
+- Homepage Customizer settings live under the `SwimShop Homepage` panel with separate fixed-slide Hero, Categories, Shop by Activity, Performance Campaign, Product Sections, Race Day / Training, Store Proposition and Newsletter sections. STORE-012A uses the new `ssz_hero_slide_*` theme-mod settings; the unfinished legacy single-hero settings have no compatibility requirement. Unrelated existing homepage settings remain unchanged unless explicitly refactored by STORE-012A.
 - New Arrivals uses newest/date ordering and Best Sellers uses WooCommerce popularity ordering. Product-card polish remains STORE-005 scope; mobile rails use native CSS scroll snap only.
 - Newsletter presentation is intentionally disabled and uses customer-facing “Email sign-up is coming soon.” copy by default. It does not submit data or claim subscription success.
-- Homepage UAT asserts section presence/order, one H1, two hero CTAs, category/brand/activity/feature links, unique activity titles, campaign layer contract, brand image loading, no developer-facing newsletter wording, no forbidden implementation labels, no broken images, no overflow and no runtime errors.
+- Homepage UAT asserts section presence/order, carousel slide/dot/loading behavior, one H1, exact category names/count/order/grid, category media harmonization, category/brand/activity/feature links, unique activity titles, campaign layer contract, brand image loading, no developer-facing newsletter wording, no forbidden implementation labels, no broken images, no overflow and no runtime errors.
 
 ## Product cards
 
@@ -147,6 +147,13 @@ For fresh-install fallback verification, use a disposable Local database or a te
 - STORE-012 corrected the demonstrated homepage tablet imbalance by using four columns for the four-item product rails from 768–1120px. The archive intentionally retains three columns through 1024px because its measured tablet rhythm remains balanced, then switches to four at 1025px. The account CSS now stacks navigation/content through 1120px to match the documented 1121px desktop split.
 - Short-height checks release the PDP summary and Cart Block sidebar from sticky positioning at or below 720px. The populated 360×667 mini-cart keeps its action stack inside an internally scrollable content region; fixed drawer behavior and one-overlay coordination remain unchanged.
 - The final responsive and authenticated account runs passed no-overflow and seam assertions at 767/768, 1120/1121 and the 1024/1025 archive exception. Authenticated My Account checks covered `360, 390, 430, 768, 899, 900, 901, 1024, 1119, 1120, 1121, 1280, 1440, 1920px`, with dashboard, orders and account-details/password readability checks at `1024, 1120, 1121, 1280px`; the 390px order rows remained readable. Manual screenshot review covered all ten required widths plus authenticated account screenshots at `390, 768, 1024, 1120, 1121, 1280px`, the 360×667 populated mini-cart and PDP/Cart/account transition states. STORE-011 fixture credentials were used only in the Local runtime and are not stored in the repository.
+
+## Homepage carousel and brand storefronts
+
+- STORE-012A advances the theme to version `0.12.1`. The homepage uses the fixed four-slot carousel contract and the exact ten-section order above; hero slide 1 remains the only eager/high-priority image and later slides are lazy-loaded.
+- Native `product_brand` archives now render a logo/text-led storefront with up to four static promotional term-meta cards, dynamic category cards, a same-page Shop All anchor and the native WooCommerce product loop/filter/sort/pagination below. A brand with no promo cards renders the same storefront without an empty promo shell.
+- Brand promo fields are available on native `product_brand` add/edit screens through the WordPress media library, with nonce, capability, sanitization and attachment cleanup. The admin script is taxonomy-screen scoped.
+- Local browser UAT passed carousel autoplay/loop/dots/swipe, reduced-motion and JavaScript-disabled behavior; Arena and zero-promo Speedo storefronts; dynamic brand/category filtering and sort preservation; two-column promo/category grids through 1120px; four-column grids from 1121px; exact category-card harmonization at 390px; no overflow; and the existing functional/regression suite. Local fixtures and credentials remain runtime-only.
 
 ## Accessibility
 

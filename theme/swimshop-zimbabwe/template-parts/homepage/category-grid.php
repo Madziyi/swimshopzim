@@ -9,13 +9,12 @@ $categories = ssz_get_homepage_categories();
 
 	<?php if ( $categories ) : ?>
 		<div class="ssz-category-grid">
-			<?php foreach ( $categories as $index => $category ) : ?>
+			<?php foreach ( $categories as $category ) : ?>
 				<?php
 				$link        = get_term_link( $category );
 				$thumbnail_id = (int) get_term_meta( $category->term_id, 'thumbnail_id', true );
-				$card_class  = 0 === $index ? ' ssz-category-card--lead' : '';
 				?>
-				<a class="ssz-category-card<?php echo esc_attr( $card_class ); ?>" href="<?php echo esc_url( is_wp_error( $link ) ? ssz_get_shop_url() : $link ); ?>">
+				<a class="ssz-category-card" href="<?php echo esc_url( is_wp_error( $link ) ? ssz_get_shop_url() : $link ); ?>">
 					<div class="ssz-category-card__media">
 						<?php if ( $thumbnail_id ) : ?>
 							<?php echo wp_get_attachment_image( $thumbnail_id, 'ssz-category-card', false, array( 'loading' => 'lazy' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
