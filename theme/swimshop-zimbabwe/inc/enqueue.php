@@ -42,6 +42,10 @@ function ssz_enqueue_assets() {
 			wp_enqueue_script( 'ssz-archive-filters', SSZ_THEME_URI . '/assets/js/archive-filters.js', array(), SSZ_THEME_VERSION, true );
 		}
 
+	if ( function_exists( 'ssz_is_brand_archive' ) && ssz_is_brand_archive() ) {
+		wp_enqueue_style( 'ssz-brand-landing', SSZ_THEME_URI . '/assets/css/brand-landing.css', array( 'ssz-archive', 'ssz-product-card' ), SSZ_THEME_VERSION );
+	}
+
 		if ( function_exists( 'is_account_page' ) && is_account_page() ) {
 			wp_enqueue_style( 'ssz-account', SSZ_THEME_URI . '/assets/css/account.css', array( 'ssz-cart', 'ssz-woocommerce' ), SSZ_THEME_VERSION );
 		}
@@ -49,6 +53,7 @@ function ssz_enqueue_assets() {
 
 	if ( is_front_page() ) {
 		wp_enqueue_style( 'ssz-homepage', SSZ_THEME_URI . '/assets/css/homepage.css', array( 'ssz-main', 'ssz-header' ), SSZ_THEME_VERSION );
+		wp_enqueue_script( 'ssz-homepage-carousel', SSZ_THEME_URI . '/assets/js/homepage-carousel.js', array(), SSZ_THEME_VERSION, true );
 	}
 
 	wp_enqueue_script( 'ssz-navigation', SSZ_THEME_URI . '/assets/js/navigation.js', array(), SSZ_THEME_VERSION, true );

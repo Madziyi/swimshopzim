@@ -60,6 +60,51 @@ function ssz_homepage_default( $key ) {
 	return isset( $defaults[ $key ] ) ? $defaults[ $key ] : '';
 }
 
+/**
+ * Return the four fixed homepage carousel slots.
+ *
+ * @return array<int,array<string,mixed>>
+ */
+function ssz_get_homepage_hero_slides() {
+	$defaults = array(
+		1 => array( 'enabled' => true, 'eyebrow' => ssz_homepage_default( 'hero_eyebrow' ), 'title' => ssz_homepage_default( 'hero_title' ), 'text' => ssz_homepage_default( 'hero_text' ), 'primary_label' => ssz_homepage_default( 'hero_primary_label' ), 'primary_url' => '', 'secondary_label' => ssz_homepage_default( 'hero_secondary_label' ), 'secondary_url' => '', 'alignment' => 'left' ),
+		2 => array( 'enabled' => false, 'eyebrow' => '', 'title' => '', 'text' => '', 'primary_label' => '', 'primary_url' => '', 'secondary_label' => '', 'secondary_url' => '', 'alignment' => 'left' ),
+		3 => array( 'enabled' => false, 'eyebrow' => '', 'title' => '', 'text' => '', 'primary_label' => '', 'primary_url' => '', 'secondary_label' => '', 'secondary_url' => '', 'alignment' => 'left' ),
+		4 => array( 'enabled' => false, 'eyebrow' => '', 'title' => '', 'text' => '', 'primary_label' => '', 'primary_url' => '', 'secondary_label' => '', 'secondary_url' => '', 'alignment' => 'left' ),
+	);
+
+	$slides = array();
+	foreach ( $defaults as $index => $default ) {
+		$prefix = 'ssz_hero_slide_' . $index . '_';
+		$slide  = $default;
+		$slide['enabled']         = (bool) get_theme_mod( $prefix . 'enabled', $default['enabled'] );
+		$slide['image_id']        = absint( get_theme_mod( $prefix . 'image', 0 ) );
+		$slide['mobile_image_id'] = absint( get_theme_mod( $prefix . 'image_mobile', 0 ) );
+		$slide['eyebrow']         = (string) get_theme_mod( $prefix . 'eyebrow', $default['eyebrow'] );
+		$slide['title']           = (string) get_theme_mod( $prefix . 'title', $default['title'] );
+		$slide['text']            = (string) get_theme_mod( $prefix . 'text', $default['text'] );
+		$slide['primary_label']   = (string) get_theme_mod( $prefix . 'primary_label', $default['primary_label'] );
+		$slide['primary_url']     = (string) get_theme_mod( $prefix . 'primary_url', $default['primary_url'] );
+		$slide['secondary_label'] = (string) get_theme_mod( $prefix . 'secondary_label', $default['secondary_label'] );
+		$slide['secondary_url']   = (string) get_theme_mod( $prefix . 'secondary_url', $default['secondary_url'] );
+		$slide['alignment']       = sanitize_key( get_theme_mod( $prefix . 'alignment', $default['alignment'] ) );
+		$slide['alignment']       = in_array( $slide['alignment'], array( 'left', 'center' ), true ) ? $slide['alignment'] : 'left';
+
+		if ( $slide['enabled'] ) {
+			$slides[] = $slide;
+		}
+	}
+
+	if ( ! $slides ) {
+		$fallback = $defaults[1];
+		$fallback['image_id']        = absint( get_theme_mod( 'ssz_hero_slide_1_image', 0 ) );
+		$fallback['mobile_image_id'] = absint( get_theme_mod( 'ssz_hero_slide_1_image_mobile', 0 ) );
+		$slides[]                   = $fallback;
+	}
+
+	return $slides;
+}
+
 function ssz_get_homepage_categories() {
 	if ( ! taxonomy_exists( 'product_cat' ) ) {
 		return array();
@@ -67,23 +112,23 @@ function ssz_get_homepage_categories() {
 
 	$categories = array();
 	$seen       = array();
+	$preferred_slugs = array( 'men', 'women', 'kids', 'equipment' );
 
-	for ( $index = 1; $index <= 5; $index++ ) {
+	for ( $index = 1; $index <= 4; $index++ ) {
 		$term_id = absint( get_theme_mod( 'ssz_home_category_' . $index, 0 ) );
 		if ( ! $term_id ) {
 			continue;
 		}
 
 		$term = get_term( $term_id, 'product_cat' );
-		if ( $term && ! is_wp_error( $term ) && ! isset( $seen[ $term->term_id ] ) ) {
+		if ( $term && ! is_wp_error( $term ) && in_array( $term->slug, $preferred_slugs, true ) && ! isset( $seen[ $term->term_id ] ) ) {
 			$categories[]                = $term;
 			$seen[ $term->term_id ] = true;
 		}
 	}
 
-	$preferred_slugs = array( 'men', 'women', 'kids', 'goggles', 'equipment' );
 	foreach ( $preferred_slugs as $slug ) {
-		if ( count( $categories ) >= 5 ) {
+		if ( count( $categories ) >= 4 ) {
 			break;
 		}
 
@@ -91,31 +136,6 @@ function ssz_get_homepage_categories() {
 		if ( $term && ! is_wp_error( $term ) && ! isset( $seen[ $term->term_id ] ) ) {
 			$categories[]                = $term;
 			$seen[ $term->term_id ] = true;
-		}
-	}
-
-	if ( count( $categories ) < 5 ) {
-		$fallback = get_terms(
-			array(
-				'taxonomy'   => 'product_cat',
-				'hide_empty' => false,
-				'number'     => 10,
-				'parent'     => 0,
-				'orderby'    => 'name',
-				'order'      => 'ASC',
-			)
-		);
-
-		if ( ! is_wp_error( $fallback ) ) {
-			foreach ( $fallback as $term ) {
-				if ( count( $categories ) >= 5 ) {
-					break;
-				}
-				if ( ! isset( $seen[ $term->term_id ] ) ) {
-					$categories[]                = $term;
-					$seen[ $term->term_id ] = true;
-				}
-			}
 		}
 	}
 
@@ -143,8 +163,14 @@ function ssz_get_homepage_category_choices() {
 		return $choices;
 	}
 
-	foreach ( $terms as $term ) {
-		$choices[ $term->term_id ] = $term->name;
+	$preferred = array( 'men', 'women', 'kids', 'equipment' );
+	foreach ( $preferred as $slug ) {
+		foreach ( $terms as $term ) {
+			if ( $term->slug === $slug ) {
+				$choices[ $term->term_id ] = $term->name;
+				break;
+			}
+		}
 	}
 
 	return $choices;

@@ -512,3 +512,25 @@ The complete STORE-003–009 and STORE-011 regressions passed with zero console/
 DECISION
 STORE-012 is accepted. Pull request #10 was merged to `main` at merge commit `210beb4e12a4df4e26e5737157f35cd2b08ac440`. STORE-013 — Accessibility becomes the next planned initiative. STORE-010 — Checkout styling remains deferred.
 
+## 2026-10-06 — STORE-012A homepage carousel and brand storefronts
+
+SCOPE
+
+Created `luna/STORE-012A-ui-refinement-carousel-brands` from accepted `main` SHA `29817a503ab6e61a1eb0d32dd33df00c9352cdc4`. STORE-010 remains deferred, Checkout was not changed, STORE-013 remains next after review, and the theme advances to version `0.12.1`.
+
+IMPLEMENTATION
+
+Reordered the homepage to the approved STORE-012A sequence and replaced the single hero with a fixed four-slot progressive-enhancement carousel. The carousel supports desktop/mobile media, per-slide copy/alignment/CTAs, dots, loop/autoplay only with multiple enabled slides, hover/focus/visibility pause, swipe, reduced-motion behavior and a no-JavaScript single-slide fallback. The first image is eager/high priority and later images are lazy-loaded.
+
+Added native `product_brand` storefront rendering through WooCommerce hooks. Brand archives now provide a logo/text-led header, up to four static promotional term-meta cards, dynamic category cards, a same-page Shop All anchor and the native product loop with filtering, sorting and pagination preserved. Added scoped native-media-library term admin fields with nonce, capability and sanitization checks. Zero-promo brands render without an empty promo shell.
+
+The homepage category contract is now exactly Men, Women, Kids and Equipment. The follow-up visual correction removed the inherited first-card landscape override so all four category cards share the same portrait media geometry at mobile widths.
+
+VERIFICATION
+
+The full Local Playwright run exited 0 with carousel, reduced-motion, JavaScript-disabled, brand storefront, dynamic filter/sort, responsive-grid, account and existing regression checks passing. Responsive seams passed at 767/768, 1120/1121 and the archive 1024/1025 exception; category promo grids measured two columns through 1120px and four from 1121px. At 390px all four homepage category media boxes measured `173px × 216.25px`. Manual screenshot review confirmed the harmonized category grid. PHP lint, JavaScript syntax, JSON parsing, `git diff --check` and one-top-level-directory packaging are being completed before handoff; Local fixtures, credentials, uploads and generated screenshots remain outside repository/package state.
+
+HANDOFF
+
+STORE-012A is implemented and awaiting Sol review on `luna/STORE-012A-ui-refinement-carousel-brands`; it is not marked accepted here and no merge was performed.
+

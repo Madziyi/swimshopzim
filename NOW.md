@@ -1,9 +1,9 @@
 # Current Initiative
 
-**Active Initiative:** STORE-013 — Accessibility
-**Status:** PLANNED / awaiting execution approval
-**Owner:** Sol until execution is handed to Luna
+**Active Initiative:** STORE-012A — Homepage carousel + brand storefronts
+**Status:** IMPLEMENTED / awaiting Sol review
+**Owner:** Luna
 
 **Previous:** STORE-012 — Responsive polish
 **Deferred:** STORE-010 — Checkout styling
-**Next:** STORE-014 — Performance
+**Next:** STORE-013 — Accessibility

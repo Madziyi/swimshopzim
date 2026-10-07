@@ -1708,6 +1708,182 @@ let accountFunctional = null;
 let store012Responsive = [];
 let store012ResponsiveSeams = [];
 let authenticatedAccountStorageState = null;
+let homepageCarouselFunctional = {
+  enabled: false,
+  twoSlides: false,
+  autoplay: false,
+  loops: false,
+  dots: false,
+  dotNavigation: false,
+  swipeLeft: false,
+  swipeRight: false,
+  reducedMotion: false,
+  noJs: false,
+  errors: [],
+};
+let brandFunctional = {
+  enabled: false,
+  arena: false,
+  noHero: false,
+  logoOrName: false,
+  h1: false,
+  promos: false,
+  optionalCta: false,
+  shopAll: false,
+  categories: false,
+  filteredCategory: false,
+  filterPreservation: false,
+  zeroPromo: false,
+  responsive: false,
+  errors: [],
+};
+
+const runStore012aFunctionalUat = async (browser) => {
+  const carousel = { ...homepageCarouselFunctional, enabled: true };
+  const brand = { ...brandFunctional, enabled: true };
+  const context = await browser.newContext(contextOptions({ viewport: { width: 1280, height: 900 } }));
+  const page = await context.newPage();
+  const errors = [];
+  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
+  page.on('pageerror', (error) => errors.push(error.message));
+  try {
+    await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+    const initial = await page.evaluate(() => ({
+      count: document.querySelectorAll('[data-carousel-slide]').length,
+      visible: [...document.querySelectorAll('[data-carousel-slide]')].filter((slide) => !slide.hidden).length,
+      dots: document.querySelectorAll('[data-carousel-dot]').length,
+      h1: document.querySelectorAll('main h1').length,
+    }));
+    carousel.twoSlides = initial.count >= 2 && initial.visible === 1 && initial.dots === initial.count && initial.h1 === 1;
+    carousel.dots = carousel.twoSlides;
+    await page.waitForTimeout(6200);
+    const afterAutoplay = await page.evaluate(() => [...document.querySelectorAll('[data-carousel-slide]')].findIndex((slide) => !slide.hidden));
+    carousel.autoplay = afterAutoplay === 1;
+    await page.waitForTimeout(6200);
+    const afterLoop = await page.evaluate(() => [...document.querySelectorAll('[data-carousel-slide]')].findIndex((slide) => !slide.hidden));
+    carousel.loops = afterLoop === 0;
+    await page.locator('[data-carousel-dot]').nth(1).click();
+    const afterDot = await page.evaluate(() => [...document.querySelectorAll('[data-carousel-slide]')].findIndex((slide) => !slide.hidden));
+    carousel.dotNavigation = afterDot === 1;
+    const box = await page.locator('[data-homepage-carousel]').boundingBox();
+    if (box) {
+      await page.locator('[data-homepage-carousel]').dispatchEvent('pointerdown', { clientX: box.x + 500, clientY: box.y + 220, pointerId: 2, pointerType: 'touch', isPrimary: true });
+      await page.locator('[data-homepage-carousel]').dispatchEvent('pointerup', { clientX: box.x + 400, clientY: box.y + 220, pointerId: 2, pointerType: 'touch', isPrimary: true });
+      const left = await page.evaluate(() => [...document.querySelectorAll('[data-carousel-slide]')].findIndex((slide) => !slide.hidden));
+      await page.locator('[data-homepage-carousel]').dispatchEvent('pointerdown', { clientX: box.x + 400, clientY: box.y + 220, pointerId: 3, pointerType: 'touch', isPrimary: true });
+      await page.locator('[data-homepage-carousel]').dispatchEvent('pointerup', { clientX: box.x + 500, clientY: box.y + 220, pointerId: 3, pointerType: 'touch', isPrimary: true });
+      const right = await page.evaluate(() => [...document.querySelectorAll('[data-carousel-slide]')].findIndex((slide) => !slide.hidden));
+      carousel.swipeLeft = left === 0;
+      carousel.swipeRight = right === 1;
+    }
+
+    const reducedContext = await browser.newContext(contextOptions({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' }));
+    const reducedPage = await reducedContext.newPage();
+    await reducedPage.goto(baseUrl, { waitUntil: 'networkidle', timeout: 30000 });
+    const reducedBefore = await reducedPage.evaluate(() => [...document.querySelectorAll('[data-carousel-slide]')].findIndex((slide) => !slide.hidden));
+    await reducedPage.waitForTimeout(6200);
+    const reducedAfter = await reducedPage.evaluate(() => [...document.querySelectorAll('[data-carousel-slide]')].findIndex((slide) => !slide.hidden));
+    await reducedPage.locator('[data-carousel-dot]').nth(1).click();
+    const reducedManual = await reducedPage.evaluate(() => [...document.querySelectorAll('[data-carousel-slide]')].findIndex((slide) => !slide.hidden));
+    carousel.reducedMotion = reducedBefore === reducedAfter && reducedManual === 1;
+    await reducedPage.close();
+    await reducedContext.close();
+
+    const noJsContext = await browser.newContext(contextOptions({ viewport: { width: 390, height: 800 }, javaScriptEnabled: false }));
+    const noJsPage = await noJsContext.newPage();
+    await noJsPage.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    carousel.noJs = await noJsPage.evaluate(() => {
+      const slides = [...document.querySelectorAll('[data-carousel-slide]')];
+      const dots = document.querySelector('[data-carousel-dots]');
+      return slides.filter((slide) => !slide.hidden).length === 1 && slides.slice(1).every((slide) => slide.hidden) && document.querySelectorAll('main h1').length === 1 && (!dots || getComputedStyle(dots).display === 'none');
+    });
+    await noJsPage.close();
+    await noJsContext.close();
+  } catch (error) {
+    errors.push(error.message);
+  } finally {
+    await page.close();
+    await context.close();
+  }
+  carousel.errors = errors;
+
+  const brandContext = await browser.newContext(contextOptions({ viewport: { width: 1280, height: 900 } }));
+  const brandPage = await brandContext.newPage();
+  const brandErrors = [];
+  brandPage.on('console', (message) => { if (message.type() === 'error') brandErrors.push(message.text()); });
+  brandPage.on('pageerror', (error) => brandErrors.push(error.message));
+  try {
+    const response = await brandPage.goto(new URL('brand/arena/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+    const state = await brandPage.evaluate(() => ({
+      status: document.querySelector('[data-brand-storefront]') ? 200 : 500,
+      h1: document.querySelectorAll('main h1').length,
+      logo: Boolean(document.querySelector('.ssz-brand-storefront__logo')),
+      storefront: Boolean(document.querySelector('[data-brand-storefront]')),
+      promos: document.querySelectorAll('.ssz-brand-promo-card').length,
+      ctas: document.querySelectorAll('.ssz-brand-promo-card__cta').length,
+      noHero: !document.querySelector('.ssz-brand-hero, .ssz-archive-brand-identity'),
+      categories: [...document.querySelectorAll('.ssz-brand-category-card')].map((card) => ({ text: card.textContent.trim(), href: card.href })),
+      products: document.querySelectorAll('#brand-products ul.products li.product').length,
+      toolbar: Boolean(document.querySelector('#brand-products [data-archive-toolbar]')),
+      productsHeading: Boolean(document.querySelector('#brand-products h2')),
+      shopAll: Boolean(document.querySelector('a[href="#brand-products"]')),
+      overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
+    }));
+    const arenaId = new URL(state.categories[0]?.href || baseUrl).searchParams.get('filter_product_brand');
+    brand.arena = (response?.status() ?? 500) < 400 && state.storefront && state.products > 0 && state.toolbar && state.productsHeading;
+    brand.logoOrName = state.logo || state.h1 === 1;
+    brand.h1 = state.h1 === 1;
+    brand.noHero = state.noHero;
+    brand.promos = state.promos === 4 && state.categories.length === 4 && state.ctas === 3;
+    brand.optionalCta = state.ctas === 3;
+    brand.shopAll = state.shopAll;
+    brand.categories = state.categories.map((category) => category.text).join('|') === 'Men|Women|Kids|Equipment';
+    const shopAllPath = new URL(brandPage.url()).pathname;
+    await brandPage.locator('a[href="#brand-products"]').click();
+    brand.shopAll = brand.shopAll && new URL(brandPage.url()).pathname === shopAllPath && new URL(brandPage.url()).hash === '#brand-products' && await brandPage.locator('#brand-products').isVisible();
+    await brandPage.goto(state.categories[0].href, { waitUntil: 'networkidle', timeout: 30000 });
+    const filteredUrl = new URL(brandPage.url());
+    const filteredState = await brandPage.evaluate(() => ({
+      title: document.querySelector('main h1')?.textContent.trim(),
+      arenaChip: [...document.querySelectorAll('.ssz-active-filter')].some((chip) => chip.textContent.includes('Arena')),
+      menChip: [...document.querySelectorAll('.ssz-active-filter')].some((chip) => chip.textContent.includes('Men')),
+      drawerBrand: Boolean(document.querySelector('input[data-archive-filter-checkbox="filter_product_brand"]:checked')),
+      drawerMen: Boolean(document.querySelector('input[data-archive-filter-checkbox="filter_product_cat"]:checked[value="men"]')),
+    }));
+    brand.filteredCategory = filteredUrl.pathname.endsWith('/shop/') && filteredUrl.searchParams.get('filter_product_brand') === arenaId && filteredUrl.searchParams.get('filter_product_cat') === 'men' && filteredState.title === 'Shop' && filteredState.arenaChip && filteredState.menChip && filteredState.drawerBrand && filteredState.drawerMen;
+    await brandPage.goto(`${filteredUrl.href}&orderby=price`, { waitUntil: 'networkidle', timeout: 30000 });
+    const sortedUrl = new URL(brandPage.url());
+    brand.filterPreservation = sortedUrl.searchParams.get('filter_product_brand') === arenaId && sortedUrl.searchParams.get('filter_product_cat') === 'men' && sortedUrl.searchParams.get('orderby') === 'price';
+    const arenaChip = brandPage.locator('.ssz-active-filter').filter({ hasText: 'Arena' }).first();
+    if (await arenaChip.count()) {
+      await arenaChip.click();
+      const removedUrl = new URL(brandPage.url());
+      brand.filterPreservation = brand.filterPreservation && !removedUrl.searchParams.has('filter_product_brand') && removedUrl.searchParams.get('filter_product_cat') === 'men';
+    }
+    const speedoPage = await brandContext.newPage();
+    await speedoPage.goto(new URL('brand/speedo/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+    brand.zeroPromo = await speedoPage.evaluate(() => Boolean(document.querySelector('[data-brand-storefront]')) && !document.querySelector('.ssz-brand-promos__grid') && document.querySelectorAll('.ssz-brand-category-card').length === 4 && document.querySelectorAll('#brand-products li.product').length > 0);
+    await speedoPage.close();
+
+    const responsive = [];
+    for (const width of [320, 360, 390, 430, 768, 1024, 1120, 1121, 1280, 1440, 1920]) {
+      await brandPage.setViewportSize({ width, height: 900 });
+      await brandPage.goto(new URL('brand/arena/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
+      responsive.push(await brandPage.evaluate((viewportWidth) => {
+        const columns = (selector) => { const node = document.querySelector(selector); return node ? getComputedStyle(node).gridTemplateColumns.split(/\s+/).length : 0; };
+        return { width: viewportWidth, promo: columns('.ssz-brand-promos__grid'), categories: columns('.ssz-brand-category-grid'), overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2 };
+      }, width));
+    }
+    brand.responsive = responsive.every((entry) => entry.overflow === false && entry.promo === (entry.width <= 1120 ? 2 : 4) && entry.categories === (entry.width <= 1120 ? 2 : 4));
+  } catch (error) {
+    brandErrors.push(error.message);
+  } finally {
+    await brandPage.close();
+    await brandContext.close();
+  }
+  brand.errors = brandErrors;
+  return { carousel, brand };
+};
 
 try {
   if (process.env.SSZ_RESPONSIVE_ONLY !== '1') {
@@ -1779,12 +1955,12 @@ try {
       const main = document.querySelector('main');
       const orderSelectors = [
         '[data-homepage-hero]',
-        '[data-homepage-categories]',
         '[data-homepage-product-section="new-arrivals"]',
         '[data-homepage-brands]',
+        '[data-homepage-categories]',
+        '[data-homepage-product-section="best-sellers"]',
         '[data-homepage-activities]',
         '[data-homepage-campaign]',
-        '[data-homepage-product-section="best-sellers"]',
         '[data-homepage-features]',
         '[data-homepage-proposition]',
         '[data-homepage-newsletter]',
@@ -1793,6 +1969,21 @@ try {
       const positions = orderedNodes.map((node) => node ? [...(main?.children ?? [])].indexOf(node) : -1);
       const heroCtas = main?.querySelectorAll('[data-homepage-hero] .ssz-hero__actions a') ?? [];
       const categoryCards = [...(main?.querySelectorAll('[data-homepage-categories] .ssz-category-card') ?? [])];
+      const categoryNames = categoryCards.map((card) => card.textContent?.trim() ?? '');
+      const categoryMedia = categoryCards.map((card) => {
+        const media = card.querySelector('.ssz-category-card__media');
+        const rect = media?.getBoundingClientRect();
+        return rect ? { width: rect.width, height: rect.height } : null;
+      }).filter(Boolean);
+      const categoryMediaHarmonized = categoryMedia.length === 4 &&
+        Math.max(...categoryMedia.map((media) => media.width)) - Math.min(...categoryMedia.map((media) => media.width)) <= 1 &&
+        Math.max(...categoryMedia.map((media) => media.height)) - Math.min(...categoryMedia.map((media) => media.height)) <= 1;
+      const categoryGrid = main?.querySelector('[data-homepage-categories] .ssz-category-grid');
+      const carousel = main?.querySelector('[data-homepage-carousel]');
+      const slides = [...(carousel?.querySelectorAll('[data-carousel-slide]') ?? [])];
+      const visibleSlides = slides.filter((slide) => !slide.hidden);
+      const dotsElement = carousel?.querySelector('[data-carousel-dots]');
+      const heroImages = slides.flatMap((slide) => [...slide.querySelectorAll('img')]);
       const brandCards = [...(main?.querySelectorAll('[data-homepage-brands] .ssz-brand-card') ?? [])];
       const brandImages = brandCards.flatMap((card) => [...card.querySelectorAll('img')]);
       const activityCards = [...(main?.querySelectorAll('[data-homepage-activities] .ssz-activity-card') ?? [])];
@@ -1836,9 +2027,26 @@ try {
         hero: Boolean(orderedNodes[0]),
         h1Count: main?.querySelectorAll('h1').length ?? 0,
         heroCtas: heroCtas.length,
-        categorySection: Boolean(orderedNodes[1]),
+        carousel: {
+          present: Boolean(carousel),
+          slideCount: slides.length,
+          visibleSlides: visibleSlides.length,
+          inactiveHidden: slides.slice(1).every((slide) => slide.hidden),
+          dotCount: carousel?.querySelectorAll('[data-carousel-dot]').length ?? 0,
+          dotsVisible: Boolean(dotsElement && getComputedStyle(dotsElement).display !== 'none'),
+          h1PerFirstSlide: Boolean(visibleSlides[0]?.querySelector('h1')) && slides.slice(1).every((slide) => !slide.querySelector('h1')),
+          initialImageEager: heroImages[0]?.getAttribute('loading') === 'eager' && heroImages[0]?.getAttribute('fetchpriority') === 'high',
+          nonInitialImagesLazy: heroImages.slice(1).every((image) => image.getAttribute('loading') === 'lazy' && image.getAttribute('fetchpriority') !== 'high'),
+          mobileSource: Boolean(slides[0]?.querySelector('source[media*="767px"]')),
+        },
+        categorySection: Boolean(orderedNodes[3]),
         categoryLinks: categoryCards.length === 0 || categoryCards.every((card) => Boolean(card.getAttribute('href'))),
-        brandSection: Boolean(orderedNodes[3]),
+        categoryNames,
+        categoryCount: categoryCards.length,
+        categoryGridColumns: categoryGrid ? getComputedStyle(categoryGrid).gridTemplateColumns.split(/\s+/).length : 0,
+        categoryMediaHarmonized,
+        gogglesAbsent: !categoryNames.some((name) => name.toLowerCase().includes('goggle')),
+        brandSection: Boolean(orderedNodes[2]),
         brandLinks: brandCards.length === 0 || brandCards.every((card) => Boolean(card.getAttribute('href'))),
         brandLinksToArchives: brandCards.length === 0 || brandCards.every((card) => {
           const href = card.getAttribute('href');
@@ -1848,17 +2056,17 @@ try {
         }),
         brandImagesConfigured: brandImages.length,
         brandImagesLoaded: brandImages.every((image) => image.complete && image.naturalWidth > 0),
-        activitySection: Boolean(orderedNodes[4]),
+        activitySection: Boolean(orderedNodes[5]),
         activities: activityCards.length,
         activityLinks: activityCards.length === 0 || activityCards.every((card) => Boolean(card.getAttribute('href'))),
         activityTitlesUnique: activityCards.length === 0 || activityCards.every((card) => card.querySelectorAll('strong').length === 1 && card.querySelectorAll('.ssz-eyebrow').length === 0),
-        campaignSection: Boolean(orderedNodes[5]),
+        campaignSection: Boolean(orderedNodes[6]),
         campaignCta: Boolean(main?.querySelector('[data-homepage-campaign] a[href]')),
         campaignMediaLoaded: !campaignImage || (campaignImage.complete && campaignImage.naturalWidth > 0),
         campaignMobileSource: !campaignSource || Boolean(campaignSource.getAttribute('srcset')),
         campaignLayering,
-        newArrivals: Boolean(orderedNodes[2]),
-        bestSellers: Boolean(orderedNodes[6]),
+        newArrivals: Boolean(orderedNodes[1]),
+        bestSellers: Boolean(orderedNodes[4]),
         featurePanels: featurePanels.length,
         featureLinks: featurePanels.length === 0 || featurePanels.every((panel) => Boolean(panel.getAttribute('href'))),
         proposition: Boolean(orderedNodes[8]),
@@ -2327,7 +2535,7 @@ try {
 
   const brandPage = await functionalContext.newPage();
   const brandResponse = await brandPage.goto(new URL('brand/arena/', baseUrl).href, { waitUntil: 'networkidle', timeout: 30000 });
-  archiveFunctional.brandArchive = (brandResponse?.status() ?? 500) < 400 && await brandPage.locator('.ssz-archive-header h1').innerText() === 'Arena';
+  archiveFunctional.brandArchive = (brandResponse?.status() ?? 500) < 400 && await brandPage.locator('.ssz-brand-storefront h1').count() === 1 && await brandPage.locator('.ssz-brand-products').count() === 1;
   await brandPage.close();
 
   const emptyPage = await functionalContext.newPage();
@@ -2342,6 +2550,9 @@ try {
 }
 
 accountFunctional = await inspectAccountUat(browser);
+  const store012aFunctional = await runStore012aFunctionalUat(browser);
+  homepageCarouselFunctional = store012aFunctional.carousel;
+  brandFunctional = store012aFunctional.brand;
   }
 
 if (process.env.SSZ_STORE012_RESPONSIVE === '1') {
@@ -2443,9 +2654,9 @@ if (process.env.SSZ_RESPONSIVE_ONLY === '1') {
     },
     cart: result.cart,
   })), null, 2));
-  console.log(JSON.stringify({ searchFunctional, cartFunctional, accountFunctional, store012Responsive: responsiveOutput, store012ResponsiveSeams }, null, 2));
+  console.log(JSON.stringify({ searchFunctional, cartFunctional, accountFunctional, homepageCarouselFunctional, brandFunctional, store012Responsive: responsiveOutput, store012ResponsiveSeams }, null, 2));
 } else {
-  console.log(JSON.stringify({ baseUrl, executablePath, requireLocalMenu, localHost, fallbackContract, pdpFallback, results, archiveFunctional, searchFunctional, cartFunctional, accountFunctional, store012Responsive, store012ResponsiveSeams }, null, 2));
+  console.log(JSON.stringify({ baseUrl, executablePath, requireLocalMenu, localHost, fallbackContract, pdpFallback, results, archiveFunctional, searchFunctional, cartFunctional, accountFunctional, homepageCarouselFunctional, brandFunctional, store012Responsive, store012ResponsiveSeams }, null, 2));
 }
 
 const failures = results.filter((result) => {
@@ -2479,8 +2690,9 @@ const failures = results.filter((result) => {
     result.responseStatus === null || result.responseStatus >= 400 || result.navigationError ||
     !result.themeVisible || result.horizontalOverflow || result.consoleErrors.length || result.pageErrors.length ||
     result.duplicateIds.length ||
-    !result.homepage.hero || result.homepage.h1Count !== 1 || result.homepage.heroCtas < 2 ||
-    !result.homepage.categorySection || !result.homepage.categoryLinks ||
+    !result.homepage.hero || result.homepage.h1Count !== 1 || result.homepage.heroCtas < 1 ||
+    !result.homepage.carousel?.present || result.homepage.carousel.slideCount < 1 || result.homepage.carousel.visibleSlides !== 1 || !result.homepage.carousel.inactiveHidden || !result.homepage.carousel.h1PerFirstSlide || !result.homepage.carousel.initialImageEager || !result.homepage.carousel.nonInitialImagesLazy ||
+    !result.homepage.categorySection || !result.homepage.categoryLinks || result.homepage.categoryCount !== 4 || result.homepage.categoryNames.join('|') !== 'Men|Women|Kids|Equipment' || !result.homepage.categoryMediaHarmonized || !result.homepage.gogglesAbsent || (result.width <= 1120 && result.homepage.categoryGridColumns !== 2) || (result.width >= 1121 && result.homepage.categoryGridColumns !== 4) ||
     !result.homepage.brandSection || !result.homepage.brandLinks || !result.homepage.brandLinksToArchives ||
     !result.homepage.brandImagesLoaded || !result.homepage.activitySection || result.homepage.activities !== 3 || !result.homepage.activityLinks ||
     !result.homepage.activityTitlesUnique || !result.homepage.campaignSection || !result.homepage.campaignCta || !result.homepage.campaignMediaLoaded || !result.homepage.campaignMobileSource || !result.homepage.campaignLayering || !result.homepage.newArrivals || !result.homepage.bestSellers ||
@@ -2550,6 +2762,15 @@ if (process.env.SSZ_RESPONSIVE_ONLY !== '1' && accountFunctional?.enabled && (
   !accountFunctional.allWidths || accountFunctional.consoleErrors.length || accountFunctional.pageErrors.length
 )) {
   console.error('Account functional UAT failed');
+  process.exitCode = 1;
+}
+
+if (process.env.SSZ_RESPONSIVE_ONLY !== '1' && (
+  !homepageCarouselFunctional.twoSlides || !homepageCarouselFunctional.autoplay || !homepageCarouselFunctional.loops || !homepageCarouselFunctional.dots ||
+  !homepageCarouselFunctional.dotNavigation || !homepageCarouselFunctional.swipeLeft || !homepageCarouselFunctional.swipeRight || !homepageCarouselFunctional.reducedMotion || !homepageCarouselFunctional.noJs || homepageCarouselFunctional.errors.length ||
+  !brandFunctional.arena || !brandFunctional.noHero || !brandFunctional.logoOrName || !brandFunctional.h1 || !brandFunctional.promos || !brandFunctional.optionalCta || !brandFunctional.shopAll || !brandFunctional.categories || !brandFunctional.filteredCategory || !brandFunctional.filterPreservation || !brandFunctional.zeroPromo || !brandFunctional.responsive || brandFunctional.errors.length
+)) {
+  console.error('STORE-012A carousel/brand storefront UAT failed');
   process.exitCode = 1;
 }
 

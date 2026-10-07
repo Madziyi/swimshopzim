@@ -44,6 +44,14 @@ Font weights are limited to regular, medium, semibold, bold and heavy. The produ
 
 **APPROVED:** Product-card media uses a 4:5 ratio through `--ssz-product-media-ratio`. The default fit is cover for apparel-led imagery; the reusable `ssz-media-frame--contain` modifier and `--ssz-product-media-fit` contract allow equipment imagery to avoid harmful cropping. Final product-card markup and states remain STORE-005 scope.
 
+## STORE-012A homepage and brand surfaces
+
+**APPROVED:** The homepage hero is a restrained fixed-slot carousel: up to four configured slides, one H1 across the active slide set, optional two-CTA actions, dots only when useful, no default arrows, pause on interaction/hidden document, and reduced-motion-safe behavior. The first image is eager/high priority; later images are lazy-loaded.
+
+**APPROVED:** Homepage category cards are exactly Men, Women, Kids and Equipment. They use native `product_cat` thumbnails and equal media geometry across all four cards: two columns through 1120px and four columns from 1121px. The homepage category grid does not use a lead tile, Goggle card or fifth card.
+
+**APPROVED:** Native `product_brand` archives use a logo/text-led storefront header, static portrait promotional cards, dynamic category cards and the native WooCommerce product loop. Promotional cards are term metadata, not a full-width hero or carousel; zero-promo brands omit the promo grid without leaving an empty shell. Promo and category grids use two columns through 1120px and four columns from 1121px.
+
 ## Shape, motion and stacking
 
 **APPROVED:** Radius tokens are none, 2px, 4px and pill. Most storefront surfaces use no radius; this is not a rounded-card SaaS system.

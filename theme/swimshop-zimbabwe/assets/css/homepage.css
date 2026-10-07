@@ -231,3 +231,42 @@
   .ssz-activity-card__image,
   .ssz-feature-panel__image { transform: none !important; }
 }
+
+/* STORE-012A: the approved hero language now supports four fixed slides. */
+.ssz-hero--carousel { display: block; position: relative; }
+.ssz-hero--carousel::after { display: none; }
+.ssz-hero__slide { position: absolute; inset: 0; display: grid; align-items: end; opacity: 0; transition: opacity var(--ssz-transition, 220ms ease); }
+.ssz-hero__slide:not([hidden]) { opacity: 1; z-index: 1; }
+.ssz-hero__slide[hidden] { display: none; }
+.ssz-hero__slide::after { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(90deg, rgba(0,0,0,.62), rgba(0,0,0,.05) 70%); pointer-events: none; }
+.ssz-hero__slide--fallback::after { display: none; }
+.ssz-hero__slide .ssz-hero__media,
+.ssz-hero__slide .ssz-hero__placeholder { z-index: 0; }
+.ssz-hero__slide .ssz-hero__content { z-index: 2; }
+.ssz-hero__slide .ssz-hero__content h2 { max-width: 900px; margin: .25rem 0 1rem; color: var(--ssz-color-white); font-size: var(--ssz-font-size-hero-display); line-height: .93; letter-spacing: var(--ssz-letter-spacing-tight); text-wrap: balance; }
+.ssz-hero__dots { position: absolute; z-index: 4; right: 0; bottom: 1.35rem; left: 0; display: none; gap: .55rem; justify-content: flex-end; }
+.ssz-carousel--js .ssz-hero__dots { display: flex; }
+.ssz-hero__dot { display: inline-grid; width: 2.25rem; height: 2.25rem; padding: .65rem; border: 0; background: transparent; cursor: pointer; }
+.ssz-hero__dot span { display: block; width: 100%; height: .2rem; background: rgba(255,255,255,.5); transition: background var(--ssz-transition, 220ms ease), transform var(--ssz-transition, 220ms ease); }
+.ssz-hero__dot:hover span, .ssz-hero__dot:focus-visible span, .ssz-hero__dot.is-active span { background: var(--ssz-color-white); transform: scaleY(1.5); }
+.ssz-hero__slide[data-carousel-slide] { touch-action: pan-y; }
+
+/* Four equal category families; there is no lead tile or fifth fallback. */
+.ssz-category-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ssz-category-card, .ssz-category-card:nth-child(n + 4), .ssz-category-card--lead { grid-column: span 1 !important; }
+.ssz-category-card__media, .ssz-category-card:nth-child(n + 4) .ssz-category-card__media, .ssz-category-card--lead .ssz-category-card__media { aspect-ratio: 4 / 5; }
+.ssz-home-section--categories .ssz-category-grid .ssz-category-card:first-child .ssz-category-card__media { aspect-ratio: 4 / 5 !important; }
+
+@media (max-width: 1120px) {
+  .ssz-category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 767px) {
+  .ssz-hero__slide::after { background: linear-gradient(0deg, rgba(0,0,0,.68), rgba(0,0,0,.08) 75%); }
+  .ssz-hero__dots { justify-content: center; }
+  .ssz-hero__slide .ssz-hero__content h2 { font-size: clamp(2.55rem, 13vw, 4.2rem); max-width: 95%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ssz-hero__slide { transition: none; }
+}

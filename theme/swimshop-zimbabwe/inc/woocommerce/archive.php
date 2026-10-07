@@ -363,6 +363,10 @@ function ssz_archive_description() {
 function ssz_render_archive_header() {
 	$type = ssz_archive_type();
 	$term = get_queried_object();
+	if ( 'brand' === $type && function_exists( 'ssz_render_brand_storefront_header' ) ) {
+		ssz_render_brand_storefront_header();
+		return;
+	}
 	if ( 'search' === $type ) {
 		$title = sprintf( __( 'Search results for “%s”', 'swimshop-zimbabwe' ), get_search_query() );
 	} else {

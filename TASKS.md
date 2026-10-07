@@ -12,6 +12,7 @@
 - [-] STORE-010 — Checkout styling (deferred)
 - [x] STORE-011 — Customer account styling
 - [x] STORE-012 — Responsive polish
+- [ ] STORE-012A — Homepage carousel + brand storefronts
 - [ ] STORE-013 — Accessibility
 - [ ] STORE-014 — Performance
 - [ ] STORE-015 — WooCommerce integration testing

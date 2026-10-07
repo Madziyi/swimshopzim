@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'SSZ_THEME_VERSION', '0.12.0' );
+define( 'SSZ_THEME_VERSION', '0.12.1' );
 define( 'SSZ_THEME_DIR', get_template_directory() );
 define( 'SSZ_THEME_URI', get_template_directory_uri() );
 
@@ -26,6 +26,7 @@ $ssz_includes = array(
 	'/inc/woocommerce/product-page-settings.php',
 	'/inc/woocommerce/product-page.php',
 	'/inc/woocommerce/archive.php',
+	'/inc/woocommerce/brand-landing.php',
 	'/inc/woocommerce/cart.php',
 	'/inc/woocommerce/account.php',
 );

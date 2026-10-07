@@ -34,7 +34,7 @@ function ssz_customize_register( $wp_customize ) {
 		'categories' => array(
 			'id'          => 'ssz_homepage_categories',
 			'title'       => __( 'Categories', 'swimshop-zimbabwe' ),
-			'description' => __( 'Choose up to five top-level WooCommerce categories. Automatic selection uses sensible swimming slugs, then catalog order.', 'swimshop-zimbabwe' ),
+			'description' => __( 'Choose the four intended storefront families: Men, Women, Kids and Equipment. Automatic selection uses those preferred slugs.', 'swimshop-zimbabwe' ),
 		),
 		'activities' => array(
 			'id'          => 'ssz_homepage_activities',
@@ -118,26 +118,27 @@ function ssz_customize_register( $wp_customize ) {
 	$add_setting( 'ssz_announcement', __( 'Announcement text', 'swimshop-zimbabwe' ), __( 'Performance swimwear and equipment for every lane.', 'swimshop-zimbabwe' ) );
 
 	$section = $sections['hero']['id'];
-	$add_media( 'ssz_hero_image', __( 'Hero desktop image', 'swimshop-zimbabwe' ) );
-	$add_media( 'ssz_hero_image_mobile', __( 'Hero mobile image', 'swimshop-zimbabwe' ) );
-	$add_setting( 'ssz_hero_eyebrow', __( 'Hero eyebrow', 'swimshop-zimbabwe' ), $defaults['hero_eyebrow'] );
-	$add_setting( 'ssz_hero_title', __( 'Hero heading', 'swimshop-zimbabwe' ), $defaults['hero_title'] );
-	$add_setting( 'ssz_hero_text', __( 'Hero supporting text', 'swimshop-zimbabwe' ), $defaults['hero_text'], 'textarea', 'sanitize_textarea_field' );
-	$legacy_label = get_theme_mod( 'ssz_hero_cta_label', '' );
-	$legacy_url   = get_theme_mod( 'ssz_hero_cta_url', '' );
-	$add_setting( 'ssz_hero_primary_label', __( 'Primary CTA label', 'swimshop-zimbabwe' ), $legacy_label ? $legacy_label : $defaults['hero_primary_label'] );
-	$add_setting( 'ssz_hero_primary_url', __( 'Primary CTA URL', 'swimshop-zimbabwe' ), $legacy_url, 'url', 'esc_url_raw' );
-	$add_setting( 'ssz_hero_secondary_label', __( 'Secondary CTA label', 'swimshop-zimbabwe' ), $defaults['hero_secondary_label'] );
-	$add_setting( 'ssz_hero_secondary_url', __( 'Secondary CTA URL', 'swimshop-zimbabwe' ), '', 'url', 'esc_url_raw' );
-	$add_setting( 'ssz_hero_alignment', __( 'Hero content alignment', 'swimshop-zimbabwe' ), $defaults['hero_alignment'], 'select', 'sanitize_key' );
-	$wp_customize->get_control( 'ssz_hero_alignment' )->choices = array(
-		'left'   => __( 'Left', 'swimshop-zimbabwe' ),
-		'center' => __( 'Center', 'swimshop-zimbabwe' ),
-	);
+	$wp_customize->get_section( $section )->description = __( 'Configure up to four fixed campaign slides. Slide 1 keeps the approved SwimShop hero language by default. Empty CTA fields omit that button.', 'swimshop-zimbabwe' );
+	for ( $index = 1; $index <= 4; $index++ ) {
+		$prefix = 'ssz_hero_slide_' . $index . '_';
+		$wp_customize->add_setting( $prefix . 'enabled', array( 'default' => 1 === $index, 'sanitize_callback' => 'rest_sanitize_boolean' ) );
+		$wp_customize->add_control( $prefix . 'enabled', array( 'label' => sprintf( __( 'Enable slide %d', 'swimshop-zimbabwe' ), $index ), 'section' => $section, 'type' => 'checkbox' ) );
+		$add_media( $prefix . 'image', sprintf( __( 'Slide %d desktop image', 'swimshop-zimbabwe' ), $index ) );
+		$add_media( $prefix . 'image_mobile', sprintf( __( 'Slide %d mobile image', 'swimshop-zimbabwe' ), $index ) );
+		$add_setting( $prefix . 'eyebrow', sprintf( __( 'Slide %d eyebrow', 'swimshop-zimbabwe' ), $index ), 1 === $index ? $defaults['hero_eyebrow'] : '' );
+		$add_setting( $prefix . 'title', sprintf( __( 'Slide %d headline', 'swimshop-zimbabwe' ), $index ), 1 === $index ? $defaults['hero_title'] : '' );
+		$add_setting( $prefix . 'text', sprintf( __( 'Slide %d supporting text', 'swimshop-zimbabwe' ), $index ), 1 === $index ? $defaults['hero_text'] : '', 'textarea', 'sanitize_textarea_field' );
+		$add_setting( $prefix . 'primary_label', sprintf( __( 'Slide %d primary CTA label', 'swimshop-zimbabwe' ), $index ), 1 === $index ? $defaults['hero_primary_label'] : '' );
+		$add_setting( $prefix . 'primary_url', sprintf( __( 'Slide %d primary CTA URL', 'swimshop-zimbabwe' ), $index ), '', 'url', 'esc_url_raw' );
+		$add_setting( $prefix . 'secondary_label', sprintf( __( 'Slide %d secondary CTA label', 'swimshop-zimbabwe' ), $index ), 1 === $index ? $defaults['hero_secondary_label'] : '' );
+		$add_setting( $prefix . 'secondary_url', sprintf( __( 'Slide %d secondary CTA URL', 'swimshop-zimbabwe' ), $index ), '', 'url', 'esc_url_raw' );
+		$add_setting( $prefix . 'alignment', sprintf( __( 'Slide %d content alignment', 'swimshop-zimbabwe' ), $index ), 'left', 'select', 'sanitize_key' );
+		$wp_customize->get_control( $prefix . 'alignment' )->choices = array( 'left' => __( 'Left', 'swimshop-zimbabwe' ), 'center' => __( 'Center', 'swimshop-zimbabwe' ) );
+	}
 
 	$section = $sections['categories']['id'];
 	$category_choices = ssz_get_homepage_category_choices();
-	for ( $index = 1; $index <= 5; $index++ ) {
+	for ( $index = 1; $index <= 4; $index++ ) {
 		$id = 'ssz_home_category_' . $index;
 		$wp_customize->add_setting(
 			$id,
