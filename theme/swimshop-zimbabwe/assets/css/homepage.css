@@ -239,7 +239,7 @@
 .ssz-hero__slide:not([hidden]) { opacity: 1; z-index: 1; }
 .ssz-hero__slide[hidden] { display: none; }
 .ssz-hero__slide::after { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(90deg, rgba(0,0,0,.62), rgba(0,0,0,.05) 70%); pointer-events: none; }
-.ssz-hero__slide--fallback::after { display: none; }
+.ssz-hero__slide.ssz-hero--fallback::after { display: none; }
 .ssz-hero__slide .ssz-hero__media,
 .ssz-hero__slide .ssz-hero__placeholder { z-index: 0; }
 .ssz-hero__slide .ssz-hero__content { z-index: 2; }

@@ -145,15 +145,7 @@ function ssz_render_brand_archive_header( $type = '' ) {
 	return false;
 }
 
-function ssz_brand_promo_fields( $term = null ) {
-	$term_id = $term instanceof WP_Term ? $term->term_id : 0;
-	if ( ! $term_id ) {
-		echo '<input type="hidden" name="ssz_brand_promo_nonce" value="' . esc_attr( wp_create_nonce( 'ssz_brand_promo_save' ) ) . '">';
-	} else {
-		wp_nonce_field( 'ssz_brand_promo_save', 'ssz_brand_promo_nonce' );
-	}
-	echo '<div class="form-field"><h2>' . esc_html__( 'Promotional storefront cards', 'swimshop-zimbabwe' ) . '</h2><p>' . esc_html__( 'Use up to four static editorial cards. Images are selected from the Media Library; empty CTA fields leave a card informational only.', 'swimshop-zimbabwe' ) . '</p></div>';
-
+function ssz_render_brand_promo_cards( $term_id = 0 ) {
 	$cards = $term_id ? ssz_get_brand_promo_cards( $term_id, false ) : array();
 	for ( $index = 1; $index <= 4; $index++ ) {
 		$card = $cards[ $index - 1 ] ?? array( 'enabled' => false, 'image_id' => 0, 'title' => '', 'text' => '', 'cta_label' => '', 'cta_url' => '' );
@@ -168,8 +160,23 @@ function ssz_brand_promo_fields( $term = null ) {
 		echo '</fieldset>';
 	}
 }
-add_action( 'product_brand_add_form_fields', 'ssz_brand_promo_fields' );
-add_action( 'product_brand_edit_form_fields', 'ssz_brand_promo_fields' );
+
+function ssz_brand_promo_add_fields() {
+	echo '<div class="form-field ssz-brand-admin-section"><h2>' . esc_html__( 'Promotional storefront cards', 'swimshop-zimbabwe' ) . '</h2><p>' . esc_html__( 'Use up to four static editorial cards. Images are selected from the Media Library; empty CTA fields leave a card informational only.', 'swimshop-zimbabwe' ) . '</p><input type="hidden" name="ssz_brand_promo_nonce" value="' . esc_attr( wp_create_nonce( 'ssz_brand_promo_save' ) ) . '">';
+	ssz_render_brand_promo_cards();
+	echo '</div>';
+}
+add_action( 'product_brand_add_form_fields', 'ssz_brand_promo_add_fields' );
+
+function ssz_brand_promo_edit_fields( $term ) {
+	$term_id = $term instanceof WP_Term ? $term->term_id : 0;
+	echo '<tr class="form-field ssz-brand-admin-section"><th scope="row"><label for="ssz_brand_promo_1_enabled">' . esc_html__( 'Promotional storefront cards', 'swimshop-zimbabwe' ) . '</label></th><td>';
+	wp_nonce_field( 'ssz_brand_promo_save', 'ssz_brand_promo_nonce' );
+	echo '<p class="description">' . esc_html__( 'Use up to four static editorial cards. Images are selected from the Media Library; empty CTA fields leave a card informational only.', 'swimshop-zimbabwe' ) . '</p>';
+	ssz_render_brand_promo_cards( $term_id );
+	echo '</td></tr>';
+}
+add_action( 'product_brand_edit_form_fields', 'ssz_brand_promo_edit_fields', 10, 1 );
 
 function ssz_save_brand_promo_meta( $term_id ) {
 	if ( ! isset( $_POST['ssz_brand_promo_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['ssz_brand_promo_nonce'] ) ), 'ssz_brand_promo_save' ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing
@@ -199,6 +206,7 @@ function ssz_enqueue_brand_admin_assets( $hook_suffix ) {
 	}
 
 	wp_enqueue_media();
+	wp_enqueue_style( 'ssz-brand-admin', SSZ_THEME_URI . '/assets/css/brand-admin.css', array(), SSZ_THEME_VERSION );
 	wp_enqueue_script( 'ssz-brand-admin', SSZ_THEME_URI . '/assets/js/brand-admin.js', array( 'jquery' ), SSZ_THEME_VERSION, true );
 }
 add_action( 'admin_enqueue_scripts', 'ssz_enqueue_brand_admin_assets' );

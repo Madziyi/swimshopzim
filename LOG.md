@@ -528,9 +528,27 @@ The homepage category contract is now exactly Men, Women, Kids and Equipment. Th
 
 VERIFICATION
 
-The full Local Playwright run exited 0 with carousel, reduced-motion, JavaScript-disabled, brand storefront, dynamic filter/sort, responsive-grid, account and existing regression checks passing. Responsive seams passed at 767/768, 1120/1121 and the archive 1024/1025 exception; category promo grids measured two columns through 1120px and four from 1121px. At 390px all four homepage category media boxes measured `173px × 216.25px`. Manual screenshot review confirmed the harmonized category grid. PHP lint, JavaScript syntax, JSON parsing, `git diff --check` and one-top-level-directory packaging are being completed before handoff; Local fixtures, credentials, uploads and generated screenshots remain outside repository/package state.
+The full Local Playwright run exited 0 with carousel, reduced-motion, JavaScript-disabled, brand storefront, dynamic filter/sort, responsive-grid, account and existing regression checks passing. Responsive seams passed at 767/768, 1120/1121 and the archive 1024/1025 exception; category promo grids measured two columns through 1120px and four from 1121px. At 390px all four homepage category media boxes measured `173px × 216.25px`. Manual screenshot review confirmed the harmonized category grid. PHP lint, JavaScript syntax, JSON parsing, `git diff --check` and one-top-level-directory packaging passed; Local fixtures, credentials, uploads and generated screenshots remain outside repository/package state.
 
 HANDOFF
 
 STORE-012A is implemented and awaiting Sol review on `luna/STORE-012A-ui-refinement-carousel-brands`; it is not marked accepted here and no merge was performed.
+
+## 2026-10-06 — STORE-012A Sol review correction
+
+CORRECTIONS
+
+Refactored the native `product_brand` promotional-card admin renderer into shared card controls with separate Add and Edit wrappers. Add uses normal div-compatible taxonomy markup; Edit uses a valid `<tr class="form-field"><th><td>` wrapper inside the taxonomy edit table. Moved admin-only card/preview rules from frontend `brand-landing.css` into `brand-admin.css`, which is enqueued only for `product_brand` Add/Edit screens alongside the existing scoped Media Library script. Corrected the no-image hero selector to match the actual `ssz-hero--fallback` class. Updated UAT and README wording to document the new `ssz_hero_slide_*` settings without claiming unfinished legacy hero compatibility.
+
+ADMIN VERIFICATION
+
+Authenticated Local browser verification passed the Add screen structure (`DIV`, four cards), Edit screen structure (`TR` inside `TBODY`, four cards, no invalid direct table children), admin CSS/JS scoping, Media Library opening on both screens, image selection and preview update, Remove image clearing, harmless Arena title/CTA/supporting-text/enable edits, term-meta save/reload, image-ID save/reload and restoration of the original Local-only Arena values. Arena storefront and zero-promo Speedo frontend checks remained green with no console/page errors.
+
+REGRESSION
+
+The temporary no-image slide check passed: the fallback slide rendered with `ssz-hero--fallback`, no image, a branded placeholder, one H1 and no `::after` darkening. Normal carousel behavior, 390px category harmonization, 1120/1121 brand promo grids, Arena → Men filtered Shop and no console/page errors passed. The full authenticated Local functional/responsive regression exited 0, including the existing STORE-003–012 coverage and responsive seams. PHP lint (44 files), JavaScript syntax (8 files plus the UAT harness), JSON parsing, `git diff --check` and package validation passed.
+
+HANDOFF
+
+STORE-012A remains implemented and awaiting Sol review on `luna/STORE-012A-ui-refinement-carousel-brands`; no milestone was started, no Checkout or STORE-013 work was added, and no merge was performed.
 
