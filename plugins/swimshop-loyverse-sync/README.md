@@ -2,7 +2,29 @@
 
 A standalone WordPress/WooCommerce plugin for one-way inventory synchronization from Loyverse POS to WooCommerce.
 
-## Version 0.1.4 — copyable read-only catalogue preview
+## Version 0.1.5 — size and colour grouping suggestions
+
+The preview now suggests variable parent products by parsing recognizable size
+and colour suffixes from separate Loyverse item names. Examples include
+`Team T-shirt White M` and `Team T-shirt Navy L` under `Team T-shirt`. Variations
+retain every original SKU, item ID and variant ID. Native Loyverse variable
+items keep their source grouping and are never merged by title.
+
+**Every name-based group needs review before import.** Only whitespace/case and
+common size notation are normalized; no fuzzy name matching is used. Different
+gender prefixes, model numbers, spelling and unknown colour descriptions remain
+separate. Singletons and unparsed size-like suffixes are marked unresolved.
+Duplicate variation options, inconsistent attribute dimensions, generic names
+without a product model, and existing source blockers flag groups for review.
+Different prices and mixed stock-tracking policies are reported explicitly.
+All rows in a group with blockers appear in the blocked-only copied report.
+
+Expand **View proposed parent products** to review groups and use the complete
+copy report to inspect every member, its proposed size/colour and grouping
+notes. Source-check counts are separate from grouping review; passing source
+checks does not approve an import. Preview-only: no import/publish operation
+is implemented. Parent proposal references are review aids, not authoritative
+saved mappings. Availability policy for untracked/negative stock remains open.
 
 Expand **All products** or **Blocked products only** beneath the preview summary
 and click its Copy button. Reports contain all pages, source IDs, proposed
@@ -16,9 +38,10 @@ validates the selected store and retrieves its inventory. It does not import,
 publish, update, adopt or delete products and does not download media. Only a
 30-minute admin-only preview cache is written. Results are paginated at 50 rows.
 
-The preview proposes published simple/variable products grouped by Loyverse
-item ID. Future imports will use `_ssz_loyverse_item_id` and
-`_ssz_loyverse_variant_id` for identity. Existing WooCommerce SKU collisions and
+The source checks evaluate simple/variable Loyverse items before suggesting
+cross-item grouping. Future imports must preserve `_ssz_loyverse_item_id` and
+`_ssz_loyverse_variant_id` on each corresponding stock-bearing record. An approved
+parent grouping map is still required. Existing WooCommerce SKU collisions and
 already-linked IDs are blocked for review. Missing or ambiguous prices, options,
 inventory and unsupported weight/composite items are reported. If any variant
 is blocked, the whole item is blocked. No name-based matching takes place.

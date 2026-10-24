@@ -147,7 +147,7 @@ class SSZ_Loyverse_Admin {
 
             <hr>
             <h2><?php esc_html_e( 'Catalogue Import Preview', 'swimshop-loyverse-sync' ); ?></h2>
-            <p><?php esc_html_e( 'Read-only: shows proposed published products, variations, prices and stock for the saved store. No products, media or stock are created or changed. Existing WooCommerce products are left alone.', 'swimshop-loyverse-sync' ); ?></p>
+            <p><?php esc_html_e( 'Read-only: shows source product checks and proposed size/colour groups for review. Name-based suggestions require approval before any import. No products, media or stock are created or changed.', 'swimshop-loyverse-sync' ); ?></p>
             <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
                 <input type="hidden" name="action" value="ssz_loyverse_catalogue_preview">
                 <?php wp_nonce_field( 'ssz_loyverse_catalogue_preview' ); ?>
@@ -251,7 +251,7 @@ class SSZ_Loyverse_Admin {
         }
         set_transient( $this->preview_key(), $result, 30 * MINUTE_IN_SECONDS );
         $this->redirect_with_notice( $result['blocked_items'] ? 'warning' : 'success', sprintf(
-            'Read-only preview complete: %d items, %d ready to create, %d blocked. No products or stock changed.',
+            'Read-only preview complete: %d source items, %d pass source checks, %d source items blocked. Review grouping suggestions below. No products or stock changed.',
             $result['items'], $result['ready_items'], $result['blocked_items']
         ) );
     }
@@ -261,7 +261,21 @@ class SSZ_Loyverse_Admin {
         if ( ! is_array( $preview ) || ( $preview['store_id'] ?? '' ) !== $store_id ) { return; }
         echo '<h3>' . esc_html__( 'Latest Catalogue Preview', 'swimshop-loyverse-sync' ) . '</h3>';
         echo '<p>' . esc_html( $preview['store_name'] . ' — ' . $preview['ran_at'] . ' UTC. Preview expires after 30 minutes.' ) . '</p>';
-        echo '<p>' . esc_html( sprintf( '%d items: %d simple, %d variable; %d active variants. %d ready items, %d blocked items.', $preview['items'], $preview['simple'], $preview['variable'], $preview['variants'], $preview['ready_items'], $preview['blocked_items'] ) ) . '</p>';
+        echo '<p>' . esc_html( sprintf( '%d source items: %d simple, %d variable; %d active variants. %d pass source checks, %d have source blockers. These counts do not approve grouping or import.', $preview['items'], $preview['simple'], $preview['variable'], $preview['variants'], $preview['ready_items'], $preview['blocked_items'] ) ) . '</p>';
+        if ( isset( $preview['grouping'] ) ) {
+            $grouping = $preview['grouping'];
+            echo '<h3>' . esc_html__( 'Proposed size and colour grouping', 'swimshop-loyverse-sync' ) . '</h3>';
+            echo '<p>' . esc_html( sprintf( '%d proposed variable parents covering %d source rows; %d rows kept separate, including %d unresolved names/singletons. %d groups have blockers; %d groups have price differences to review.', $grouping['proposed_groups'], $grouping['grouped_rows'], $grouping['separate_rows'], $grouping['unresolved_rows'], $grouping['blocked_groups'], $grouping['price_warning_groups'] ) ) . '</p>';
+            echo '<p>' . esc_html__( 'Suggestions use exact remaining names after recognizing size and colour suffixes. Spelling differences, gender/junior prefixes and unknown colour descriptions are retained. Every name-based group needs review. Different variation prices are shown for confirmation, not silently unified. Original source IDs and SKUs remain attached to each row.', 'swimshop-loyverse-sync' ) . '</p>';
+            echo '<details><summary>' . esc_html__( 'View proposed parent products', 'swimshop-loyverse-sync' ) . '</summary><div style="overflow-x:auto"><table class="widefat striped"><thead><tr><th>Proposed parent</th><th>Variations</th><th>Review status</th><th>Notes</th></tr></thead><tbody>';
+            foreach ( $preview['groups'] as $group ) {
+                if ( $group['rows'] < 2 && 'Source group — review' !== $group['status'] && 'Blocked group — review' !== $group['status'] ) { continue; }
+                echo '<tr><td>' . esc_html( $group['parent'] ) . '</td><td>' . esc_html( $group['rows'] ) . '</td><td>' . esc_html( $group['status'] ) . '</td><td>' . esc_html( $group['notes'] ) . '</td></tr>';
+            }
+            echo '</tbody></table></div></details>';
+        } else {
+            echo '<p>' . esc_html__( 'Run the preview again to generate grouping suggestions for this version.', 'swimshop-loyverse-sync' ) . '</p>';
+        }
         echo '<p>' . esc_html( 'Prices are raw Loyverse amounts. WooCommerce currency: ' . $preview['currency'] . '. Confirm currency and tax treatment before import. Images are only flagged as available; none are downloaded. Categories, brands and descriptions are outside this preview.' ) . '</p>';
         wp_enqueue_script( 'ssz-loyverse-preview-copy', plugins_url( 'assets/admin-preview.js', SSZ_LOYVERSE_SYNC_FILE ), array(), SSZ_LOYVERSE_SYNC_VERSION, true );
         echo '<p>' . esc_html__( 'Copy reports include every preview page. Each row represents a variant; blocked rows include the reason. You can also select and copy the text manually.', 'swimshop-loyverse-sync' ) . '</p>';
@@ -276,11 +290,12 @@ class SSZ_Loyverse_Admin {
         $pages = max( 1, (int) ceil( count( $preview['rows'] ) / 50 ) );
         $page = isset( $_GET['preview_page'] ) ? min( $pages, max( 1, absint( $_GET['preview_page'] ) ) ) : 1;
         echo '<div style="overflow-x:auto"><table class="widefat striped"><thead><tr>';
-        foreach ( array( 'Product / source IDs', 'Type / options', 'SKU', 'Price', 'Stock', 'Image', 'Proposed action / issues' ) as $heading ) { echo '<th scope="col">' . esc_html( $heading ) . '</th>'; }
+        foreach ( array( 'Product / source IDs', 'Source type / options', 'SKU', 'Price', 'Stock', 'Image', 'Source action / issues', 'Proposed parent / variation', 'Grouping review' ) as $heading ) { echo '<th scope="col">' . esc_html( $heading ) . '</th>'; }
         echo '</tr></thead><tbody>';
         foreach ( array_slice( $preview['rows'], ( $page - 1 ) * 50, 50 ) as $row ) {
             echo '<tr><td><strong>' . esc_html( $row['name'] ) . '</strong><br><small>' . esc_html( 'Item: ' . $row['item_id'] ) . '<br>' . esc_html( 'Variant: ' . $row['variant_id'] ) . '</small></td>';
             foreach ( array( $row['type'] . ( $row['options'] ? ' — ' . $row['options'] : '' ), $row['sku'], $row['price'], $row['stock'], $row['image'], $row['action'] . ( $row['issues'] ? ': ' . implode( '; ', $row['issues'] ) : '' ) ) as $value ) { echo '<td>' . esc_html( $value ) . '</td>'; }
+            echo '<td>' . esc_html( $row['proposed_parent'] ?? 'Run preview again' ) . '<br>' . esc_html( $row['proposed_options'] ?? '' ) . '</td><td>' . esc_html( $row['grouping_status'] ?? '' ) . '<br>' . esc_html( $row['grouping_notes'] ?? '' ) . '</td>';
             echo '</tr>';
         }
         echo '</tbody></table></div>';
@@ -297,16 +312,19 @@ class SSZ_Loyverse_Admin {
         $lines = array(
             'SwimShop Loyverse catalogue preview — READ ONLY (no products changed)',
             'Store: ' . $preview['store_name'] . ' | Generated: ' . $preview['ran_at'] . ' UTC',
-            sprintf( 'Items: %d | Ready: %d | Blocked: %d | Active variants: %d', $preview['items'], $preview['ready_items'], $preview['blocked_items'], $preview['variants'] ),
+            sprintf( 'Source items: %d | Pass source checks: %d | Source blocked: %d | Active variants: %d', $preview['items'], $preview['ready_items'], $preview['blocked_items'], $preview['variants'] ),
             'Scope: ' . ( $blocked_only ? 'Blocked products only' : 'All products, across all preview pages' ),
             'Prices: raw Loyverse amounts; WooCommerce currency ' . $preview['currency'] . '. Currency and tax treatment require confirmation.',
             '',
-            implode( "\t", array( 'Product', 'Type', 'Options', 'SKU', 'Price', 'Stock', 'Proposed action', 'Blocking reasons', 'Loyverse item ID', 'Loyverse variant ID' ) ),
+            'All name-based groups are suggestions awaiting review. Source checks alone do not approve import.',
+            isset( $preview['grouping'] ) ? sprintf( 'Proposed variable parents: %d | Grouped source rows: %d | Separate rows: %d | Unresolved separate rows: %d | Blocked groups: %d', $preview['grouping']['proposed_groups'], $preview['grouping']['grouped_rows'], $preview['grouping']['separate_rows'], $preview['grouping']['unresolved_rows'], $preview['grouping']['blocked_groups'] ) : 'Run preview again for grouping suggestions.',
+            implode( "\t", array( 'Product', 'Type', 'Options', 'SKU', 'Price', 'Stock', 'Source action', 'Source blocking reasons', 'Loyverse item ID', 'Loyverse variant ID', 'Proposed parent', 'Proposed variation options', 'Grouping review', 'Grouping notes', 'Group review reference' ) ),
         );
         $count = 0;
         foreach ( $preview['rows'] as $row ) {
-            if ( $blocked_only && empty( $row['issues'] ) ) { continue; }
+            if ( $blocked_only && empty( $row['issues'] ) && 0 !== strpos( $row['grouping_status'] ?? '', 'Blocked group' ) ) { continue; }
             $values = array( $row['name'], $row['type'], $row['options'], $row['sku'], $row['price'], $row['stock'], $row['action'], implode( '; ', $row['issues'] ), $row['item_id'], $row['variant_id'] );
+            $values = array_merge( $values, array( $row['proposed_parent'] ?? '', $row['proposed_options'] ?? '', $row['grouping_status'] ?? '', $row['grouping_notes'] ?? '', $row['group_reference'] ?? '' ) );
             $values = array_map( static function ( $value ) { return str_replace( array( "\r", "\n", "\t" ), ' ', (string) $value ); }, $values );
             $lines[] = implode( "\t", $values );
             $count++;

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: SwimShop Loyverse Sync
  * Description: One-way Loyverse to WooCommerce inventory synchronization for SwimShop Zimbabwe.
- * Version: 0.1.4
+ * Version: 0.1.5
  * Author: SwimShop Zimbabwe
  * Requires at least: 6.4
  * Requires PHP: 8.0
@@ -14,12 +14,13 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SSZ_LOYVERSE_SYNC_VERSION', '0.1.4' );
+define( 'SSZ_LOYVERSE_SYNC_VERSION', '0.1.5' );
 define( 'SSZ_LOYVERSE_SYNC_FILE', __FILE__ );
 define( 'SSZ_LOYVERSE_SYNC_DIR', plugin_dir_path( __FILE__ ) );
 
 require_once SSZ_LOYVERSE_SYNC_DIR . 'includes/class-ssz-loyverse-client.php';
 require_once SSZ_LOYVERSE_SYNC_DIR . 'includes/class-ssz-loyverse-preview.php';
+require_once SSZ_LOYVERSE_SYNC_DIR . 'includes/class-ssz-loyverse-grouping.php';
 require_once SSZ_LOYVERSE_SYNC_DIR . 'includes/class-ssz-loyverse-sync.php';
 require_once SSZ_LOYVERSE_SYNC_DIR . 'includes/class-ssz-loyverse-admin.php';
 

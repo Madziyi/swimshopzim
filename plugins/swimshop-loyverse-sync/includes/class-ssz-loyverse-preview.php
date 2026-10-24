@@ -30,6 +30,8 @@ class SSZ_Loyverse_Preview {
         }
         $report = $this->build( $items, $inventory, $store_id, $existing );
         if ( is_wp_error( $report ) ) { return $report; }
+        $grouping = new SSZ_Loyverse_Grouping();
+        $report = $grouping->annotate( $report );
         $report['store_id'] = $store_id;
         $report['store_name'] = $store_name;
         $report['currency'] = get_woocommerce_currency();
