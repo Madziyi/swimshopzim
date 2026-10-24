@@ -2,7 +2,13 @@
 
 A standalone WordPress/WooCommerce plugin for one-way inventory synchronization from Loyverse POS to WooCommerce.
 
-## Version 0.1.3 — read-only catalogue preview
+## Version 0.1.4 — copyable read-only catalogue preview
+
+Expand **All products** or **Blocked products only** beneath the preview summary
+and click its Copy button. Reports contain all pages, source IDs, proposed
+actions and blocking reasons. The read-only text boxes also support manual
+selection and copying if clipboard access is unavailable. Reports are plain
+tab-separated text suitable for pasting into a message or text editor.
 
 Open WooCommerce → Loyverse Sync and click **Preview Loyverse Product Import
 (read-only)**. This fetches all `/items` pages (including embedded variants),

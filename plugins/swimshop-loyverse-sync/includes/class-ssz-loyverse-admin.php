@@ -263,6 +263,16 @@ class SSZ_Loyverse_Admin {
         echo '<p>' . esc_html( $preview['store_name'] . ' — ' . $preview['ran_at'] . ' UTC. Preview expires after 30 minutes.' ) . '</p>';
         echo '<p>' . esc_html( sprintf( '%d items: %d simple, %d variable; %d active variants. %d ready items, %d blocked items.', $preview['items'], $preview['simple'], $preview['variable'], $preview['variants'], $preview['ready_items'], $preview['blocked_items'] ) ) . '</p>';
         echo '<p>' . esc_html( 'Prices are raw Loyverse amounts. WooCommerce currency: ' . $preview['currency'] . '. Confirm currency and tax treatment before import. Images are only flagged as available; none are downloaded. Categories, brands and descriptions are outside this preview.' ) . '</p>';
+        wp_enqueue_script( 'ssz-loyverse-preview-copy', plugins_url( 'assets/admin-preview.js', SSZ_LOYVERSE_SYNC_FILE ), array(), SSZ_LOYVERSE_SYNC_VERSION, true );
+        echo '<p>' . esc_html__( 'Copy reports include every preview page. Each row represents a variant; blocked rows include the reason. You can also select and copy the text manually.', 'swimshop-loyverse-sync' ) . '</p>';
+        foreach ( array( 'all' => 'All products', 'blocked' => 'Blocked products only' ) as $scope => $label ) {
+            $id = 'ssz-preview-copy-' . $scope;
+            echo '<details class="ssz-preview-copy"><summary>' . esc_html( $label ) . '</summary>';
+            echo '<p><button type="button" class="button" data-ssz-copy-target="' . esc_attr( $id ) . '">' . esc_html( 'Copy ' . strtolower( $label ) ) . '</button> <span role="status" aria-live="polite"></span></p>';
+            echo '<label class="screen-reader-text" for="' . esc_attr( $id ) . '">' . esc_html( $label . ' report' ) . '</label>';
+            echo '<textarea readonly id="' . esc_attr( $id ) . '" rows="12" style="width:100%;font-family:monospace" spellcheck="false">' . esc_textarea( $this->catalogue_copy_text( $preview, 'blocked' === $scope ) ) . '</textarea>';
+            echo '</details>';
+        }
         $pages = max( 1, (int) ceil( count( $preview['rows'] ) / 50 ) );
         $page = isset( $_GET['preview_page'] ) ? min( $pages, max( 1, absint( $_GET['preview_page'] ) ) ) : 1;
         echo '<div style="overflow-x:auto"><table class="widefat striped"><thead><tr>';
@@ -281,6 +291,29 @@ class SSZ_Loyverse_Admin {
             }
         }
         echo '</p>';
+    }
+
+    private function catalogue_copy_text( $preview, $blocked_only ) {
+        $lines = array(
+            'SwimShop Loyverse catalogue preview — READ ONLY (no products changed)',
+            'Store: ' . $preview['store_name'] . ' | Generated: ' . $preview['ran_at'] . ' UTC',
+            sprintf( 'Items: %d | Ready: %d | Blocked: %d | Active variants: %d', $preview['items'], $preview['ready_items'], $preview['blocked_items'], $preview['variants'] ),
+            'Scope: ' . ( $blocked_only ? 'Blocked products only' : 'All products, across all preview pages' ),
+            'Prices: raw Loyverse amounts; WooCommerce currency ' . $preview['currency'] . '. Currency and tax treatment require confirmation.',
+            '',
+            implode( "\t", array( 'Product', 'Type', 'Options', 'SKU', 'Price', 'Stock', 'Proposed action', 'Blocking reasons', 'Loyverse item ID', 'Loyverse variant ID' ) ),
+        );
+        $count = 0;
+        foreach ( $preview['rows'] as $row ) {
+            if ( $blocked_only && empty( $row['issues'] ) ) { continue; }
+            $values = array( $row['name'], $row['type'], $row['options'], $row['sku'], $row['price'], $row['stock'], $row['action'], implode( '; ', $row['issues'] ), $row['item_id'], $row['variant_id'] );
+            $values = array_map( static function ( $value ) { return str_replace( array( "\r", "\n", "\t" ), ' ', (string) $value ); }, $values );
+            $lines[] = implode( "\t", $values );
+            $count++;
+        }
+        $lines[] = '';
+        $lines[] = sprintf( 'End of report — %d variant rows included.', $count );
+        return implode( "\n", $lines );
     }
 
     public function diagnose_reads() {
